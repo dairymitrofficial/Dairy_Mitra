@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-xl mx-auto p-6">
+  <h1 class="text-3xl font-bold mb-4">My Account</h1>
+  <div class="bg-white shadow rounded p-4 space-y-2">
+    <p><strong>Dairy Name:</strong> {{ user.dairy_name }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Phone:</strong> {{ user.phone }}</p>
+  </div>
+
+  <div class="flex gap-4 mt-6">
+    <a href="{{ url_for('logout') }}" class="bg-gray-600 text-white px-4 py-2 rounded">Logout</a>
+    <form action="{{ url_for('delete_account') }}" method="POST" onsubmit="return confirm('Account delete करायचं आहे का?');">
+      <button class="bg-red-600 text-white px-4 py-2 rounded">Delete Account</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

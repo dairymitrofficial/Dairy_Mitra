@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>पावती मिळवा</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600&family=Yatra+One&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* General Body Styles */
+      body {
+        font-family: "Noto Sans Devanagari", "Arial", sans-serif;
+        font-size: 16px; /* Base font size for screen */
+        color: #000;
+        margin: 0;
+        padding: 0;
+        background: #eef4f7; /* Lighter, modern background for screen */
+        line-height: 1.6;
+        display: flex; /* For overall page layout (header, content, footer) */
+        flex-direction: column;
+        min-height: 100vh;
+        padding-top: 150px; /* Adjust for fixed header height (desktop/tablet) */
+        box-sizing: border-box;
+      }
+
+      h2 {
+        /* For "पावती मिळवा" heading */
+        color: #2c3e50;
+        margin-top: 30px;
+        margin-bottom: 20px;
+        text-align: center;
+        font-weight: 600;
+      }
+
+      /* Fixed Header CSS - Based on image_dea583.png and image_b647f6.png */
+      .navbar {
+        background-color: #a7d9ff; /* Light blue background */
+        border: 2px solid #6ee7b7; /* Green border */
+        border-radius: 15px; /* Rounded corners */
+        padding: 15px 20px; /* Inner spacing */
+        display: flex;
+        flex-wrap: wrap; /* Allow items to wrap for responsiveness */
+        justify-content: space-between; /* Distribute items (left, center, right) */
+        align-items: center; /* Vertically centers items */
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        width: calc(100% - 40px); /* Full width minus side margins */
+        max-width: 900px; /* Max width for the header box */
+        margin: 20px auto; /* Center the header box */
+        box-sizing: border-box;
+        position: fixed; /* Fixed at the top */
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        height: auto; /* Height adjusts based on content wrapping */
+        min-height: 120px; /* Minimum height to accommodate wrapped content */
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        gap: 10px;
+        order: 1; /* First element on the first row */
+      }
+
+      .logo-circle {
+        height: 60px; /* Larger circular logo */
+        width: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      }
+
+      .logo-text {
+        height: 50px; /* Larger text logo */
+        width: auto;
+        object-fit: contain;
+        filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.3));
+      }
+
+      .header-center {
+        flex-grow: 1;
+        text-align: center;
+        padding: 0 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* No height: 100% here as it causes issues with flex-wrap */
+        order: 3; /* Forces this element to the next line on mobile */
+        flex-basis: 100%; /* Make it take full width on its new line */
+        margin-top: 10px; /* Space from elements above */
+      }
+
+      .dairy-name-header {
+        font-family: "Yatra One", cursive;
+        color: #2c3e50;
+        font-size: 2rem; /* Larger font for dairy name */
+        margin: 0;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        white-space: normal; /* Allow text to wrap on mobile */
+        line-height: 1.2;
+      }
+
+      .header-right {
+        flex-shrink: 0;
+        order: 2; /* Second element on the first row */
+        margin-left: auto; /* Pushes button to the right */
+        align-self: center; /* Vertically center with the logo on the first line */
+      }
+
+      .dashboard-btn {
+        background-color: #6ee7b7; /* Green button */
+        color: #2c3e50; /* Dark text for contrast */
+        text-decoration: none;
+        padding: 10px 20px;
+        border-radius: 20px; /* More rounded */
+        font-size: 1.1rem;
+        font-weight: bold;
+        white-space: nowrap;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        transition: background-color 0.3s ease, transform 0.2s ease,
+          box-shadow 0.3s ease;
+        border: 1px solid #2c3e50; /* Darker border for button */
+      }
+
+      .dashboard-btn:hover {
+        background-color: #58c89b; /* Slightly darker green on hover */
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      /* Main Content Area */
+      main {
+        flex-grow: 1; /* Pushes footer to the bottom */
+      }
+
+      /* Form Styles (Non-Printable) */
+      form.text-center {
+        background-color: #fff;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        max-width: 600px;
+        width: 90%;
+        margin: 20px auto 30px auto;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        box-sizing: border-box;
+      }
+
+      form.text-center input[type="date"] {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 1rem;
+        flex-grow: 1;
+        max-width: 200px;
+      }
+
+      form.text-center button.btn-primary {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      form.text-center button.btn-primary:hover {
+        background-color: #0056b3;
+      }
+
+      /* Print Button Styles (Non-Printable) */
+      .print-btn {
+        background: linear-gradient(to right, #00c6ff, #0072ff);
+        color: white;
+        font-weight: bold;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 1rem;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(0, 114, 255, 0.3);
+        transition: 0.3s;
+        display: block;
+        margin: 20px auto;
+        width: fit-content;
+        box-sizing: border-box;
+      }
+      .print-btn:hover {
+        background: linear-gradient(to right, #0072ff, #00c6ff);
+        transform: scale(1.03);
+      }
+
+      /* Receipt Container for Screen View */
+      .container.printable {
+        max-width: 800px; /* Max width for receipts on screen */
+        margin: 0px auto 50px auto; /* Center with some bottom margin */
+        padding: 0;
+        background: #fff; /* White background for preview */
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for preview */
+        box-sizing: border-box;
+      }
+
+      .receipt-box {
+        width: 100%; /* Take full width of its container */
+        border: 1px solid #000; /* Black border for receipts */
+        padding: 20px; /* Padding inside each receipt box */
+        margin: 20px 0; /* Space between receipts on screen */
+        box-sizing: border-box; /* Include padding/border in element's total width */
+        background: #fff; /* Ensure white background for each receipt box */
+      }
+
+      .receipt-box h3 {
+        margin-bottom: 15px;
+        text-align: center;
+        font-size: 22px; /* Dairy name heading size */
+        color: #2c3e50;
+      }
+
+      .header-section p {
+        margin: 5px 0;
+        font-size: 16px;
+        text-align: left;
+      }
+
+      /* Tables in Receipt - Screen View */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        font-size: 16px; /* Default table font size for screen */
+      }
+
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 6px 10px;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      th {
+        background-color: #f0f0f0;
+        font-weight: bold;
+      }
+
+      .milk-table thead tr:first-child th {
+        background-color: #e0e0e0;
+      }
+
+      .rate-table {
+        margin-top: 15px;
+      }
+      .rate-table td {
+        text-align: left;
+        font-weight: normal;
+      }
+      .rate-table tr td:last-child {
+        text-align: right;
+      }
+
+      .summary-table {
+        margin-top: 20px;
+      }
+
+      .summary-table td,
+      .summary-table th {
+        text-align: left;
+      }
+
+      .summary-table tr td:last-child {
+        text-align: right;
+      }
+
+      .summary-table tr th:last-child {
+        text-align: right;
+      }
+
+      .summary-table tr:last-child th {
+        background-color: #c8e6c9;
+        font-size: 18px;
+      }
+
+      .summary-table td strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      p.text-center {
+        margin: 40px auto;
+        font-size: 18px;
+        color: #555;
+      }
+
+      /* --- Responsive Design for Header (for mobile/tablet) --- */
+      @media (max-width: 768px) {
+        body {
+          padding-top: 130px; /* Adjust for taller wrapped mobile header */
+        }
+        .navbar {
+          padding: 10px 15px;
+          min-height: 110px; /* Adjusted min-height for mobile header */
+          width: calc(100% - 20px); /* Reduce side margins */
+        }
+        .header-left {
+          gap: 5px;
+        }
+        .logo-circle {
+          height: 50px;
+          width: 50px;
+        }
+        .logo-text {
+          height: 40px;
+        }
+        .header-center {
+          margin-top: 8px; /* Slightly less margin on mobile */
+        }
+        .dairy-name-header {
+          font-size: 1.6rem; /* Smaller font for mobile dairy name */
+        }
+        .dashboard-btn {
+          padding: 8px 15px;
+          font-size: 1rem;
+        }
+        /* Form responsive */
+        form.text-center {
+          padding: 20px;
+          gap: 10px;
+        }
+        form.text-center input[type="date"] {
+          flex-basis: 100%;
+          max-width: unset;
+        }
+        form.text-center button.btn-primary {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 480px) {
+        body {
+          padding-top: 120px; /* Further adjust for smallest screens */
+        }
+        .navbar {
+          padding: 8px 10px;
+          min-height: 100px;
+        }
+        .logo-circle {
+          height: 45px;
+          width: 45px;
+        }
+        .logo-text {
+          height: 35px;
+        }
+        .dairy-name-header {
+          font-size: 1.4rem;
+        }
+        .dashboard-btn {
+          padding: 7px 12px;
+          font-size: 0.9rem;
+        }
+      }
+
+      /* ============================================== */
+      /* PRINT-SPECIFIC STYLES (@media print)          */
+      /* ============================================== */
+
+      @media print {
+        /* General Print Setup */
+        body {
+          margin: 0;
+          padding: 0;
+          background: #fff !important; /* Force white background */
+          -webkit-print-color-adjust: exact; /* For better color printing on some browsers */
+          print-color-adjust: exact;
+          overflow: hidden; /* Prevent scrollbars in print preview */
+          font-size: 12px; /* Base font size for print - JS will adjust this */
+        }
+
+        /* Hide non-printable elements */
+        .no-print {
+          display: none !important;
+        }
+
+        /* Main Container for Print */
+        .container.printable {
+          width: 210mm; /* A4 width */
+          margin: 0;
+          padding: 0;
+          box-shadow: none;
+          background: none;
+        }
+
+        /* Individual Receipt Box for Print */
+        .receipt-box {
+          width: 210mm; /* Force A4 width */
+          height: 297mm; /* Force A4 height - crucial for measuring content */
+          border: 1px solid #000;
+          padding: 20mm; /* Generous padding from A4 edges */
+          margin: 0; /* No margin between printed receipts */
+          page-break-after: always; /* Each receipt on a new page */
+          box-sizing: border-box;
+          display: flex; /* Use flexbox for vertical distribution */
+          flex-direction: column;
+          position: relative;
+          overflow: hidden; /* Hide anything that might escape during scaling attempts */
+        }
+
+        /* Receipt Header in Print */
+        .receipt-box .header-section {
+          flex-shrink: 0; /* Don't shrink header content */
+          margin-bottom: 10px;
+        }
+        .receipt-box h3 {
+          font-size: 20px;
+          margin-bottom: 8px;
+        }
+        .receipt-box .header-section p {
+          font-size: 14px;
+          margin: 2px 0;
+        }
+
+        /* Tables in Print */
+        .receipt-box table {
+          font-size: 12px; /* Base font size for tables in print - JS will adjust this */
+          margin-top: 8px;
+          flex-shrink: 1; /* Allow tables to shrink if needed */
+          flex-grow: 1; /* Allow tables to grow if space permits */
+          border-collapse: collapse; /* Ensure borders are good */
+        }
+
+        .receipt-box th,
+        .receipt-box td {
+          border: 1px solid #000; /* Ensure borders are black and visible */
+          padding: 3px 6px; /* Compact padding for print */
+          vertical-align: middle; /* Middle align for print cells */
+          line-height: 1.2;
+          word-wrap: break-word; /* Allow long words to break */
+        }
+
+        /* Specific print-table styling */
+        .milk-table {
+          margin-bottom: 10px;
+        }
+        .rate-table {
+          margin-bottom: 10px;
+        }
+        .summary-table {
+          margin-bottom: 0; /* No bottom margin, footer will handle */
+        }
+
+        .summary-table tr:last-child th {
+          font-size: 15px; /* Final amount emphasized */
+        }
+
+        /* Footer for each receipt page (optional, but good for A4) */
+        .receipt-footer {
+          flex-shrink: 0; /* Don't shrink footer */
+          margin-top: auto; /* Push to bottom */
+          text-align: center;
+          font-size: 10px;
+          color: #555;
+          padding-top: 10px;
+          border-top: 1px dashed #ccc;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="no-print">
+      <div class="navbar">
+        <div class="header-left">
+          <img
+            src="{{ url_for('static', filename='images/logo-img.png') }}"
+            alt="Dairy Logo"
+            class="logo-circle"
+          />
+          <img
+            src="{{ url_for('static', filename='images/logo-text.png') }}"
+            alt="Dairy Mitra"
+            class="logo-text"
+          />
+        </div>
+        <div class="header-right">
+          <a href="{{ url_for('dashboard') }}" class="dashboard-btn"
+            >Dashboard</a
+          >
+        </div>
+        <div class="header-center">
+          <h1 class="dairy-name-header">
+            {{ session.get('dairy_name', 'Your Dairy Name') }}
+          </h1>
+        </div>
+      </div>
+      <h2>पावती मिळवा</h2>
+    </div>
+
+    <form method="post" class="text-center no-print">
+      पासून तारीख: <input type="date" name="from_date" required /> पर्यंत तारीख:
+      <input type="date" name="to_date" required />
+      <button type="submit" class="btn btn-primary">पावती मिळवा</button>
+    </form>
+
+    <div class="container printable">
+      <div class="text-center no-print">
+        <button class="print-btn">🖨️ सर्व रिसीट्स प्रिंट करा</button>
+      </div>
+
+      {% if receipts %} {% for rec in receipts %}
+      <div class="receipt-box">
+        <div class="header-section">
+          <h3>{{ session.get('dairy_name', 'Your Dairy Name') }}</h3>
+          <p>नाव – {{ rec.name }}</p>
+          <p>
+            प्रकार – {% if rec.milk_type == 'cow' %} गाय {% elif rec.milk_type
+            == 'buffalo' %} म्हैस {% elif rec.milk_type == 'both' %} गाय आणि म्हैस {%
+            else %} - {% endif %}
+          </p>
+          <p>गाव – {{ rec.address }}</p>
+        </div>
+
+        <table class="milk-table">
+          <thead>
+            <tr>
+              <th>तारीख</th>
+              <th colspan="2">गाय</th>
+              <th colspan="2">म्हैस</th>
+            </tr>
+            <tr>
+              <th></th>
+              <th>सकाळ</th>
+              <th>संध्याकाळ</th>
+              <th>सकाळ</th>
+              <th>संध्याकाळ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rec.data %}
+            <tr>
+              <td>{{ row.day }}</td>
+              <td>{{ row.cow_morning }}</td>
+              <td>{{ row.cow_evening }}</td>
+              <td>{{ row.buffalo_morning }}</td>
+              <td>{{ row.buffalo_evening }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>एकूण</td>
+              <td>{{ rec.total_cow_morning|round(1) }}</td>
+              <td>{{ rec.total_cow_evening|round(1) }}</td>
+              <td>{{ rec.total_buffalo_morning|round(1) }}</td>
+              <td>{{ rec.total_buffalo_evening|round(1) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <table class="rate-table">
+          <tr>
+            <td rowspan="2">दुधाचा दर</td>
+            <td>गाय</td>
+            <td>₹{{ rec.cow_rate }}</td>
+          </tr>
+          <tr>
+            <td>म्हैस</td>
+            <td>₹{{ rec.buffalo_rate }}</td>
+          </tr>
+        </table>
+
+        <table class="summary-table">
+          <tr>
+            <td>एकूण गायीचे दूध</td>
+            <td>{{ rec.total_cow|round(1) }} लि</td>
+          </tr>
+          <tr>
+            <td>गायीच्या दूधाची रक्कम</td>
+            <td>₹{{ rec.cow_cost|int }}</td>
+          </tr>
+          <tr>
+            <td>एकूण म्हशीचे दूध</td>
+            <td>{{ rec.total_buffalo|round(1) }} लि</td>
+          </tr>
+          <tr>
+            <td>म्हशीच्या दूधाची रक्कम</td>
+            <td>₹{{ rec.buffalo_cost|int }}</td>
+          </tr>
+
+          {% if rec.food_sack_details %} {% for sack in rec.food_sack_details %}
+          <tr>
+            {% if loop.first %}
+            <td rowspan="{{ rec.food_sack_details|length }}">
+              <strong>जनावरांच्या खाद्याची माहिती:</strong>
+            </td>
+            {% endif %}
+            <td>
+              • {{ sack.name }} (₹{{ sack.rate | int }}/गोणी) × {{ sack.qty }} =
+              ₹{{ sack.total | int }}
+            </td>
+          </tr>
+          {% endfor %} {% endif %}
+
+          <tr>
+            <td>आगाऊ रक्कम</td>
+            <td>₹{{ rec.advance|int }}</td>
+          </tr>
+          <tr>
+            <th>अंतिम देय रक्कम</th>
+            <th>₹{{ rec.final_payable|int }}</th>
+          </tr>
+        </table>
+      </div>
+      {% endfor %} {% else %}
+      <p class="text-center">
+        निवडलेल्या तारखांमध्ये कोणतीही पावती सापडली नाही.
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="no-print">{% include 'footer.html' %}</div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const printButton = document.querySelector(".print-btn");
+        if (printButton) {
+          printButton.addEventListener("click", function () {
+            // Temporarily disable the button to prevent multiple clicks
+            printButton.disabled = true;
+            printButton.textContent = "तयारी करत आहे..."; // Feedback to user
+
+            // Adjust receipts before printing
+            adjustReceiptsForPrint().then(() => {
+              // Give a small delay for rendering adjustments before printing
+              setTimeout(() => {
+                window.print();
+                // Re-enable button after print dialog is initiated
+                printButton.disabled = false;
+                printButton.textContent = "🖨️ सर्व रिसीट्स प्रिंट करा";
+                resetReceiptStyles(); // Reset styles after printing for screen view
+              }, 800); // Increased delay slightly
+            });
+          });
+        }
+
+        // Function to adjust receipt content for print, returns a Promise
+        function adjustReceiptsForPrint() {
+          return new Promise((resolve) => {
+            const receiptBoxes = document.querySelectorAll(".receipt-box");
+            // A4 dimensions in pixels (assuming 96 DPI for browser rendering)
+            const A4_HEIGHT_PX = (297 / 25.4) * 96;
+
+            // Define min and max font sizes (in px) to avoid unreadable text
+            const MIN_FONT_PX = 10;
+            const MAX_FONT_PX = 16; // Capped for print readability
+
+            let processedCount = 0;
+
+            receiptBoxes.forEach((receiptBox) => {
+              // Reset any previous scaling or font size adjustments
+              receiptBox.style.transform = "";
+              receiptBox.style.transformOrigin = "";
+              receiptBox.style.fontSize = "";
+              receiptBox.style.padding = "20mm"; // Ensure base padding is reset for accurate measurement
+
+              // Use a flex property to allow space distribution if content is short
+              receiptBox.style.justifyContent = "space-between";
+
+              // Use Promise.resolve().then() to ensure styles are applied and rendered
+              // before measuring, essential for accurate calculations in a loop.
+              Promise.resolve().then(() => {
+                let currentFontSizePx = parseFloat(
+                  getComputedStyle(receiptBox).fontSize
+                );
+                let iterationCount = 0;
+                const MAX_ITERATIONS = 15; // Max attempts to fit
+
+                // Phase 1: Shrink if content overflows
+                while (iterationCount < MAX_ITERATIONS) {
+                  const contentHeight = receiptBox.scrollHeight;
+
+                  if (contentHeight <= A4_HEIGHT_PX) {
+                    break; // Content fits, no more shrinking needed
+                  }
+
+                  // Shrink font size incrementally
+                  currentFontSizePx = Math.max(
+                    MIN_FONT_PX,
+                    currentFontSizePx * 0.95
+                  ); // Decrease by 5%
+                  receiptBox.style.fontSize = `${currentFontSizePx}px`;
+
+                  iterationCount++;
+                }
+
+                // Phase 2: If after shrinking, it's too sparse, attempt to moderately increase font size (fill space)
+                const finalContentHeight = receiptBox.scrollHeight;
+                if (
+                  finalContentHeight < A4_HEIGHT_PX * 0.8 &&
+                  currentFontSizePx < MAX_FONT_PX
+                ) {
+                  const remainingSpaceRatio =
+                    (A4_HEIGHT_PX - finalContentHeight) / A4_HEIGHT_PX;
+                  let increaseFactor = 1 + remainingSpaceRatio * 0.1; // Up to 10% increase based on remaining space
+                  increaseFactor = Math.min(
+                    increaseFactor,
+                    MAX_FONT_PX / currentFontSizePx
+                  ); // Cap at max font size
+
+                  currentFontSizePx = Math.min(
+                    MAX_FONT_PX,
+                    currentFontSizePx * increaseFactor
+                  );
+                  receiptBox.style.fontSize = `${currentFontSizePx}px`;
+                }
+
+                processedCount++;
+                if (processedCount === receiptBoxes.length) {
+                  resolve(); // All receipts processed
+                }
+              });
+            });
+          });
+        }
+
+        // Function to reset styles after printing to revert for screen view
+        function resetReceiptStyles() {
+          document.querySelectorAll(".receipt-box").forEach((receiptBox) => {
+            receiptBox.style.transform = "";
+            receiptBox.style.transformOrigin = "";
+            receiptBox.style.fontSize = ""; // Remove dynamically set font size
+            receiptBox.style.padding = ""; // Remove dynamically set padding if any
+            receiptBox.style.width = ""; // Remove width set for scaling
+            receiptBox.style.height = ""; // Remove height set for scaling
+            receiptBox.style.justifyContent = ""; // Remove justify-content for screen view
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

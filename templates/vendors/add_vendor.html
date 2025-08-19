@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}ग्राहक जोडा{% endblock %}
+
+{% block content %}
+<h2 class="page-title">➕ ग्राहक जोडा</h2>
+
+<form method="POST" class="section grid gap-4 max-w-lg">
+    
+    <div>
+        <label class="form-label">ग्राहकाचे नाव</label>
+        <input type="text" name="name" placeholder="ग्राहकाचे नाव" required class="form-input">
+    </div>
+
+    <div>
+        <label class="form-label">ग्राहक ID</label>
+        <input type="text" name="vendor_id" placeholder="ग्राहक ID" required class="form-input">
+    </div>
+
+    <div>
+        <label class="form-label">गाव</label>
+        <input type="text" name="address" placeholder="गाव" required class="form-input">
+    </div>
+
+    <div>
+        <label class="form-label">दूध प्रकार</label>
+        <select name="milk_type" required class="form-select">
+            <option value="cow">🐄 गायीचे दूध</option>
+            <option value="buffalo">🐃 म्हशीचे दूध</option>
+            <option value="both">दोन्ही</option>
+        </select>
+    </div>
+
+    <div>
+        <label class="form-label">फोन नंबर</label>
+        <input type="text" name="phone" placeholder="फोन नंबर" class="form-input">
+    </div>
+
+    <button type="submit" class="btn btn-primary">ग्राहक जोडा</button>
+</form>
+{% endblock %}

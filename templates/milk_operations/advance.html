@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}ॲडव्हान्स एन्ट्री{% endblock %}
+
+{% block content %}
+<h2 class="page-title">💰 ॲडव्हान्स एन्ट्री</h2>
+
+<!-- Alert area -->
+<div id="ajax-alert" class="mb-4"></div>
+
+<form id="advance-form" method="POST" action="{{ url_for('advance') }}" class="section space-y-4">
+    <!-- Date -->
+    <label class="form-label">दिनांक</label>
+    <input type="date" name="date" value="{{ today_date }}" required class="form-input max-w-xs">
+
+    <!-- Search -->
+    <input type="text" id="vendorSearch" placeholder="ग्राहक आयडी किंवा नाव शोधा"
+           onkeyup="filterVendors()" class="form-input max-w-md">
+
+    <!-- Vendor Table -->
+    <div class="table-wrap mt-4">
+        <table class="table" id="vendorTable">
+            <thead>
+                <tr>
+                    <th>आयडी</th>
+                    <th>नाव</th>
+                    <th>ॲडव्हान्स (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vendors %}
+                <tr>
+                    <td>{{ v.vendor_id }}</td>
+                    <td>{{ v.name }}</td>
+                    <td>
+                        <input type="number" step="0.01" name="advance_{{ v.vendor_id }}" class="form-input">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-4">सेव्ह करा</button>
+</form>
+
+<script>
+function filterVendors() {
+    const input = document.getElementById("vendorSearch").value.toLowerCase();
+    const rows = document.querySelectorAll("#vendorTable tbody tr");
+    rows.forEach(row => {
+        const id = row.cells[0].textContent.toLowerCase();
+        const name = row.cells[1].textContent.toLowerCase();
+        row.style.display = id.includes(input) || name.includes(input) ? "" : "none";
+    });
+}
+
+document.getElementById("advance-form").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const payload = {};
+    formData.forEach((value, key) => { payload[key] = value; });
+
+    fetch(form.action, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(async res => {
+        let data;
+        try { data = await res.json(); }
+        catch { location.reload(); return; }
+
+        const alertBox = document.getElementById("ajax-alert");
+        alertBox.innerHTML = "";
+        if (res.ok) {
+            alertBox.innerHTML = `<div class="badge badge-ok">${data.message || "ॲडव्हान्स सेव्ह झाले ✅"}</div>`;
+            form.querySelectorAll('input[type="number"]').forEach(inp => inp.value = "");
+        } else {
+            alertBox.innerHTML = `<div class="badge badge-danger">${data.message || "ॲडव्हान्स सेव्ह करताना त्रुटी ⚠️"}</div>`;
+        }
+    })
+    .catch(err => {
+        document.getElementById("ajax-alert").innerHTML = `<div class="badge badge-danger">Network error. Try again.</div>`;
+        console.error("AJAX error:", err);
+    });
+});
+</script>
+{% endblock %}

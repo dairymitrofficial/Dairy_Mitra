@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}विक्रेता संपादित करा{% endblock %}
+
+{% block content %}
+<h2 class="page-title">✏️ विक्रेता संपादित करा</h2>
+
+<form method="POST" class="section grid gap-4 max-w-lg">
+
+    <div>
+        <label class="form-label">नाव</label>
+        <input type="text" name="name" value="{{ vendor.name }}" placeholder="नाव" required class="form-input">
+    </div>
+
+    <div>
+        <label class="form-label">पत्ता</label>
+        <input type="text" name="address" value="{{ vendor.address }}" placeholder="पत्ता" required class="form-input">
+    </div>
+
+    <div>
+        <label class="form-label">दूध प्रकार</label>
+        <select name="milk_type" class="form-select">
+            <option value="cow" {% if vendor.milk_type == 'cow' %}selected{% endif %}>🐄 गायीचे दूध</option>
+            <option value="buffalo" {% if vendor.milk_type == 'buffalo' %}selected{% endif %}>🐃 म्हशीचे दूध</option>
+            <option value="both" {% if vendor.milk_type == 'both' %}selected{% endif %}>दोन्ही</option>
+        </select>
+    </div>
+
+    <div>
+        <label class="form-label">फोन नंबर</label>
+        <input type="text" name="phone" value="{{ vendor.phone }}" placeholder="फोन नंबर" class="form-input">
+    </div>
+
+    <button type="submit" class="btn btn-primary">विक्रेता अपडेट करा</button>
+</form>
+{% endblock %}

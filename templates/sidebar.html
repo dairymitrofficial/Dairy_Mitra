@@ -1,0 +1,67 @@
+<aside
+  id="sidebar"
+  class="fixed md:static top-16 md:top-0 left-0 w-64 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out bg-white border-r border-slate-200 flex flex-col z-40 md:z-auto md:block h-[calc(100vh-4rem)] md:h-auto"
+>
+  <!-- Close btn mobile -->
+  <div class="flex justify-end md:hidden p-2">
+    <button id="close-sidebar" class="text-slate-700 hover:text-indigo-600">
+      ✕
+    </button>
+  </div>
+
+  <!-- Menu -->
+  <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+    <a href="{{ url_for('dashboard') }}" class="sidebar-link">📊 Dashboard</a>
+    <a href="{{ url_for('milk_collection') }}" class="sidebar-link">
+  <i class="fa-solid fa-cow"></i> दूध जमा करा
+</a>
+
+<a href="{{ url_for('add_vendor') }}" class="sidebar-link">
+  <i class="fa-solid fa-user-plus"></i> नवीन ग्राहक नोंदवा
+</a>
+
+<a href="{{ url_for('edit_entry') }}" class="sidebar-link">
+  <i class="fa-solid fa-pen-to-square"></i> नोंदी बदला
+</a>
+
+<a href="{{ url_for('vendor_list') }}" class="sidebar-link">
+  <i class="fa-solid fa-users"></i> ग्राहक यादी
+</a>
+
+<a href="{{ url_for('food_sack') }}" class="sidebar-link">
+  <i class="fa-solid fa-box"></i> पेंड पोती घेतली
+</a>
+
+<a href="{{ url_for('advance') }}" class="sidebar-link">
+  <i class="fa-solid fa-hand-holding-dollar"></i> ॲडव्हान्स घेतला
+</a>
+
+<a href="{{ url_for('calculation') }}" class="sidebar-link">
+  <i class="fa-solid fa-calculator"></i> सविस्तर हिशोब
+</a>
+
+<a href="{{ url_for('payment') }}" class="sidebar-link">
+  <i class="fa-solid fa-money-bill-wave"></i> अंतिम पैसे द्या
+</a>
+
+<a href="{{ url_for('milk_rate') }}" class="sidebar-link">
+  <i class="fa-solid fa-tags"></i> दूध दर
+</a>
+
+<a href="{{ url_for('receipt_all_vendors') }}" class="sidebar-link">
+  <i class="fa-solid fa-receipt"></i> पावती घ्या
+</a>
+
+<a href="{{ url_for('food_sack_rate') }}" class="sidebar-link">
+  <i class="fa-solid fa-sack-dollar"></i> खाद्य पोत्यांचा दर
+</a>
+
+<a href="{{ url_for('milk_summary') }}" class="sidebar-link">
+  <i class="fa-solid fa-chart-line"></i> जमा केलेलं दूध बघा
+</a>
+
+    <a href="{{ url_for('account') }}" class="sidebar-link">🙍‍♂️ Profile</a>
+    <a href="{{ url_for('analytics') }}" class="sidebar-link">📈 Analytics</a>
+    <a href="{{ url_for('settings') }}" class="sidebar-link">⚙️ Settings</a>
+  </nav>
+</aside>

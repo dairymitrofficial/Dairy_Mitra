@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="mr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Dairy Mitr{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
+
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/receipt.css') }}"
+    />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom CSS -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body class="bg-slate-50 font-inter">
+    <!-- Fixed Header -->
+    <header class="fixed top-0 left-0 right-0 z-50">
+      {% include 'header.html' %}
+    </header>
+
+    <div class="flex pt-[64px] pb-[50px] min-h-screen">
+      <!-- Sidebar -->
+      {% include 'sidebar.html' %}
+
+      <!-- Main Content -->
+      <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    <!-- Fixed Footer -->
+    <footer class="fixed bottom-0 left-0 right-0 z-50">
+      {% include 'footer.html' %}
+    </footer>
+
+    <!-- Sidebar Toggle Script -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("overlay");
+        const toggleButton = document.getElementById("sidebar-toggle");
+        const closeButton = document.getElementById("close-sidebar");
+
+        function openSidebar() {
+          sidebar.classList.add("sidebar-open");
+          overlay.classList.add("active");
+        }
+
+        function closeSidebar() {
+          sidebar.classList.remove("sidebar-open");
+          overlay.classList.remove("active");
+        }
+
+        if (toggleButton) toggleButton.addEventListener("click", openSidebar);
+        if (closeButton) closeButton.addEventListener("click", closeSidebar);
+        if (overlay) overlay.addEventListener("click", closeSidebar);
+      });
+    </script>
+
+    <!-- ✅ Page-specific scripts -->
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

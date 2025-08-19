@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}पेंड भर टाका{% endblock %}
+
+{% block content %}
+<h2 class="page-title">पेंड भर टाका</h2>
+
+<form method="POST" class="section">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+            <label class="form-label">तारीख</label>
+            <input type="date" name="date" class="form-input" value="{{ today_date }}" required>
+        </div>
+        <div class="md:col-span-2 flex items-end">
+            <input type="text" id="vendorSearch" class="form-input" placeholder="ग्राहक ID किंवा नाव शोधा" onkeyup="filterVendors()">
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>नाव</th>
+                    <th>गोण्या (Qty)</th>
+                    <th>पेंड प्रकार</th>
+                    <th>एकूण रक्कम</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for v in vendors %}
+            <tr>
+                <td>{{ v.vendor_id }}</td>
+                <td>{{ v.name }}</td>
+                <td>
+                    <input type="number" min="0" 
+                           class="form-input w-28"
+                           name="sack_qty_{{ v.vendor_id }}" 
+                           id="qty_{{ v.vendor_id }}"
+                           oninput="calculateTotal('{{ v.vendor_id }}')">
+                </td>
+                <td>
+                    <select name="sack_type_{{ v.vendor_id }}" 
+                            id="sack_{{ v.vendor_id }}" 
+                            class="form-select w-48"
+                            onchange="calculateTotal('{{ v.vendor_id }}')">
+                        <option value="" data-rate="0">-- निवडा --</option>
+                        {% for sack in sack_rates %}
+                            <option value="{{ sack.id }}" data-rate="{{ sack.rate }}">{{ sack.name }} (₹{{ sack.rate }})</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td><span id="total_{{ v.vendor_id }}">₹0.00</span></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-4">सबमिट करा</button>
+</form>
+
+<script>
+function calculateTotal(vendorId) {
+    const qty = parseFloat(document.getElementById(`qty_${vendorId}`).value) || 0;
+    const sack = document.getElementById(`sack_${vendorId}`);
+    const rate = parseFloat(sack.options[sack.selectedIndex].getAttribute('data-rate')) || 0;
+    const total = qty * rate;
+    document.getElementById(`total_${vendorId}`).innerText = `₹${total.toFixed(2)}`;
+}
+function filterVendors() {
+    const input = document.getElementById("vendorSearch").value.toLowerCase();
+    const rows = document.querySelectorAll("tbody tr");
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(input) ? "" : "none";
+    });
+}
+</script>
+{% endblock %}
