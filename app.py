@@ -6,8 +6,7 @@ import string
 import logging
 from datetime import datetime, timezone, date, timedelta
 from email.message import EmailMessage
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo   # Python 3.9+ साठी
+from zoneinfo import ZoneInfo   
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
@@ -16,7 +15,8 @@ import MySQLdb.cursors
 from werkzeug.security import generate_password_hash, check_password_hash
 from twilio.rest import Client
 import smtplib
-
+from flask import send_from_directory
+from functools import wraps   
 load_dotenv()
 
 # ------------------------------
@@ -30,7 +30,7 @@ app.config['MYSQL_HOST'] = os.getenv("MYSQL_HOST")
 app.config['MYSQL_USER'] = os.getenv("MYSQL_USER")
 app.config['MYSQL_PASSWORD'] = os.getenv("MYSQL_PASSWORD")
 app.config['MYSQL_DB'] = os.getenv("MYSQL_DB")
-
+app.config["MYSQL_PORT"] = int(os.getenv("MYSQL_PORT"))
 mysql = MySQL(app)
 
 # Twilio
@@ -62,6 +62,7 @@ def audit_log(user_id, action, details=""):
         logging.info(f"user_id={user_id} action={action} details={details}")
     except Exception as e:
         print("Audit logging failed:", e)
+
 
 
 # ------------------------------
@@ -159,6 +160,10 @@ def _get_date_slot_from_request(req):
         slot_val = 'morning'
 
     return date_val, slot_val
+
+
+from functools import wraps   # वर import मध्ये add कर
+
 
 
 # ------------------------------
@@ -426,44 +431,109 @@ def dashboard():
 # ------------------------------
 @app.route('/add_vendor', methods=['GET', 'POST'])
 def add_vendor():
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    # NEXT AUTO ID
+    cursor.execute("""
+        SELECT MAX(vendor_id) AS max_id
+        FROM vendors
+        WHERE user_id=%s
+    """, (session['id'],))
+
+    res = cursor.fetchone()
+
+    next_vendor_id = 1
+    if res and res['max_id']:
+        next_vendor_id = int(res['max_id']) + 1
+
     if request.method == 'POST':
+
         name = request.form.get('name')
-        vendor_id = request.form.get('vendor_id')
+        vendor_id = int(request.form.get('vendor_id'))
         address = request.form.get('address')
         milk_type = request.form.get('milk_type')
-        phone = request.form.get('phone', '').strip()
-        if phone and not phone.startswith('+'):
-            phone = '+91' + phone
-        if phone and len(phone) > 15:
-            flash('Phone too long.', 'warning')
-            return redirect(url_for('add_vendor'))
-        try:
-            cursor = mysql.connection.cursor()
+        phone = request.form.get('phone')
+
+        # CHECK IF ID EXISTS
+        cursor.execute("""
+            SELECT 1 FROM vendors
+            WHERE vendor_id=%s AND user_id=%s
+        """, (vendor_id, session['id']))
+
+        existing = cursor.fetchone()
+
+        if existing:
+
+            # SAFE SHIFT (reverse order)
             cursor.execute("""
-                INSERT INTO vendors (vendor_id, name, address, milk_type, phone, user_id)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (vendor_id, name, address, milk_type, phone, session['id']))
-            mysql.connection.commit()
-            audit_log(session['id'], 'add_vendor', f"vendor_id={vendor_id}")
-            flash('Vendor added.', 'success')
-        except MySQLdb.IntegrityError:
-            flash('Vendor ID already exists for your account.', 'warning')
-        except Exception:
-            logging.exception("Error adding vendor")
-            flash('Error adding vendor.', 'danger')
+                SELECT vendor_id FROM vendors
+                WHERE user_id=%s AND vendor_id >= %s
+                ORDER BY vendor_id DESC
+            """, (session['id'], vendor_id))
+
+            rows = cursor.fetchall()
+
+            for r in rows:
+                old_id = r['vendor_id']
+                new_id = old_id + 1
+
+                cursor.execute("""
+                    UPDATE vendors
+                    SET vendor_id=%s
+                    WHERE vendor_id=%s AND user_id=%s
+                """, (new_id, old_id, session['id']))
+
+                cursor.execute("""
+                    UPDATE milk_collection
+                    SET vendor_id=%s
+                    WHERE vendor_id=%s AND user_id=%s
+                """, (new_id, old_id, session['id']))
+
+                cursor.execute("""
+                    UPDATE advance
+                    SET vendor_id=%s
+                    WHERE vendor_id=%s AND user_id=%s
+                """, (new_id, old_id, session['id']))
+
+                cursor.execute("""
+                    UPDATE food_sack
+                    SET vendor_id=%s
+                    WHERE vendor_id=%s AND user_id=%s
+                """, (new_id, old_id, session['id']))
+
+        # INSERT NEW VENDOR
+        cursor.execute("""
+            INSERT INTO vendors
+            (vendor_id,name,address,milk_type,phone,user_id)
+            VALUES(%s,%s,%s,%s,%s,%s)
+        """,(vendor_id,name,address,milk_type,phone,session['id']))
+
+        mysql.connection.commit()
+
+        flash("Vendor Added Successfully","success")
+
         return redirect(url_for('add_vendor'))
-    return render_template('vendors/add_vendor.html')
 
+    return render_template(
+        'vendors/add_vendor.html',
+        next_vendor_id=next_vendor_id
+    )
 
-@app.route('/vendor_list', methods=['GET', 'POST'])
+@app.route('/vendor_list', methods=['GET'])
 def vendor_list():
+    search = request.args.get('search', '')
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
     query = "SELECT * FROM vendors WHERE user_id = %s"
     params = [session['id']]
-    if request.method == 'POST':
-        search = request.form.get('search', '')
+
+    if search:
         query += " AND (name LIKE %s OR vendor_id LIKE %s)"
-        params.extend(['%' + search + '%', '%' + search + '%'])
+        params.extend([f"%{search}%", f"%{search}%"])
+
+    query += " ORDER BY vendor_id ASC"
+
     cursor.execute(query, params)
     vendors = cursor.fetchall()
     return render_template('vendors/vendor_list.html', vendors=vendors)
@@ -494,34 +564,68 @@ def edit_vendor(vendor_id):
     return render_template('vendors/edit_vendor.html', vendor=vendor)
 
 
-@app.route('/delete_vendor/<string:vendor_id>', methods=['POST'])
+@app.route('/delete_vendor/<int:vendor_id>', methods=['POST'])
 def delete_vendor(vendor_id):
-    """
-    Backend requires confirm=1 in form data to proceed.
-    """
-    confirm = request.form.get('confirm') or request.args.get('confirm')
-    if str(confirm) != '1':
-        flash('Please confirm deletion (confirm=1).', 'warning')
+
+    confirm = request.form.get('confirm')
+
+    if confirm != "1":
+        flash("Confirm deletion first","warning")
         return redirect(url_for('vendor_list'))
-    try:
-        cursor = mysql.connection.cursor()
-        cursor.execute("SELECT 1 FROM vendors WHERE vendor_id = %s AND user_id = %s", (vendor_id, session['id']))
-        if not cursor.fetchone():
-            flash('Vendor not found or unauthorized.', 'danger')
-            return redirect(url_for('vendor_list'))
-        cursor.execute("DELETE FROM advance WHERE vendor_id = %s AND user_id = %s", (vendor_id, session['id']))
-        cursor.execute("DELETE FROM food_sack WHERE vendor_id = %s AND user_id = %s", (vendor_id, session['id']))
-        cursor.execute("DELETE FROM milk_collection WHERE vendor_id = %s AND user_id = %s", (vendor_id, session['id']))
-        cursor.execute("DELETE FROM vendors WHERE vendor_id = %s AND user_id = %s", (vendor_id, session['id']))
-        mysql.connection.commit()
-        audit_log(session['id'], 'delete_vendor', f"vendor_id={vendor_id}")
-        flash('Vendor and related data deleted.', 'success')
-    except Exception:
-        logging.exception("Error deleting vendor")
-        flash('Error deleting vendor.', 'danger')
+
+    cursor = mysql.connection.cursor()
+
+    # DELETE RECORDS
+    cursor.execute("""
+        DELETE FROM milk_collection
+        WHERE vendor_id=%s AND user_id=%s
+    """,(vendor_id,session['id']))
+
+    cursor.execute("""
+        DELETE FROM advance
+        WHERE vendor_id=%s AND user_id=%s
+    """,(vendor_id,session['id']))
+
+    cursor.execute("""
+        DELETE FROM food_sack
+        WHERE vendor_id=%s AND user_id=%s
+    """,(vendor_id,session['id']))
+
+    cursor.execute("""
+        DELETE FROM vendors
+        WHERE vendor_id=%s AND user_id=%s
+    """,(vendor_id,session['id']))
+
+    # SHIFT IDS UP
+    cursor.execute("""
+        UPDATE vendors
+        SET vendor_id = vendor_id - 1
+        WHERE user_id=%s AND vendor_id > %s
+    """,(session['id'],vendor_id))
+
+    cursor.execute("""
+        UPDATE milk_collection
+        SET vendor_id = vendor_id - 1
+        WHERE user_id=%s AND vendor_id > %s
+    """,(session['id'],vendor_id))
+
+    cursor.execute("""
+        UPDATE advance
+        SET vendor_id = vendor_id - 1
+        WHERE user_id=%s AND vendor_id > %s
+    """,(session['id'],vendor_id))
+
+    cursor.execute("""
+        UPDATE food_sack
+        SET vendor_id = vendor_id - 1
+        WHERE user_id=%s AND vendor_id > %s
+    """,(session['id'],vendor_id))
+
+    mysql.connection.commit()
+
+    flash("Vendor Deleted","success")
+
     return redirect(url_for('vendor_list'))
-
-
 
 # ------------------------------
 # Milk Rate
@@ -544,6 +648,9 @@ def milk_rate():
     cursor.execute("SELECT * FROM milk_rates WHERE user_id = %s ORDER BY date_from DESC", (session['id'],))
     rates = cursor.fetchall()
     return render_template('rates/milk_rate.html', rates=rates)
+
+os.environ["TZ"] = "Asia/Kolkata"
+
 def _auto_slot():
     """System time पाहून default slot ठरवतो (Asia/Kolkata)."""
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
@@ -572,23 +679,8 @@ def delete_milk_rate(rate_id):
     return redirect(url_for('milk_rate'))
 
 
-# ------------------------------
-# AUTO SLOT SYSTEM (IST BASED)
-# ------------------------------
-os.environ["TZ"] = "Asia/Kolkata"
 
-now = datetime.now(ZoneInfo("Asia/Kolkata"))
 
-def _auto_slot():
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-
-    now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    print("DEBUG >>> IST:", now.strftime("%Y-%m-%d %H:%M:%S"), "Hour:", now.hour)
-
-    if now.hour < 15:   # 00:00 → 14:59
-        return "morning"
-    return "evening"
 
 
 def _get_date_slot_from_request(req):
@@ -621,7 +713,11 @@ def milk_collection():
     Uses hidden selected_date / selected_slot in template (JS sets these).
     """
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT * FROM vendors WHERE user_id = %s", (session['id'],))
+    cursor.execute("""
+SELECT * FROM vendors
+WHERE user_id = %s
+ORDER BY vendor_id ASC
+""", (session['id'],))
     vendors = cursor.fetchall()
 
     # derive default date & slot from query/form/JSON
@@ -802,7 +898,11 @@ def submit_bulk_milk_ajax():
 @app.route('/advance', methods=['GET', 'POST'])
 def advance():
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT * FROM vendors WHERE user_id = %s", (session['id'],))
+    cursor.execute("""
+SELECT * FROM vendors
+WHERE user_id = %s
+ORDER BY vendor_id ASC
+""", (session['id'],))
     vendors = cursor.fetchall()
 
     if request.method == 'POST':
@@ -862,7 +962,11 @@ def advance():
 @app.route('/food_sack', methods=['GET', 'POST'])
 def food_sack():
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT * FROM vendors WHERE user_id = %s", (session['id'],))
+    cursor.execute("""
+SELECT * FROM vendors
+WHERE user_id = %s
+ORDER BY vendor_id ASC
+""", (session['id'],))
     vendors = cursor.fetchall()
     cursor.execute("SELECT * FROM food_sack_rates WHERE user_id = %s ORDER BY name", (session['id'],))
     sack_rates = cursor.fetchall()
@@ -979,196 +1083,272 @@ def delete_food_sack_rate(sack_id):
 # ------------------------------
 @app.route('/edit_entry', methods=['GET', 'POST'])
 def edit_entry():
+    if "id" not in session:
+        flash("Please login first.", "danger")
+        return redirect(url_for("login"))
+
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT * FROM vendors WHERE user_id = %s", (session['id'],))
+
+    # Load vendors with milk_type
+    cursor.execute("""
+        SELECT vendor_id, name, milk_type
+        FROM vendors
+        WHERE user_id=%s
+        ORDER BY vendor_id ASC
+    """, (session['id'],))
     vendors = cursor.fetchall()
+
     data = []
+    selected_vendor_type = None
+
     if request.method == 'POST':
         vendor_id = request.form.get('vendor_id')
         from_date = request.form.get('from_date')
         to_date = request.form.get('to_date')
-        # ownership check
-        cursor.execute("SELECT 1 FROM vendors WHERE vendor_id=%s AND user_id=%s", (vendor_id, session['id']))
-        if not cursor.fetchone():
-            flash('Unauthorized or vendor not found.', 'danger')
+
+        # Ownership + milk_type check
+        cursor.execute("""
+            SELECT milk_type
+            FROM vendors
+            WHERE vendor_id=%s AND user_id=%s
+        """, (vendor_id, session['id']))
+        vendor_info = cursor.fetchone()
+
+        if not vendor_info:
+            flash("Unauthorized vendor.", "danger")
             return redirect(url_for('edit_entry'))
+
+        selected_vendor_type = vendor_info["milk_type"]
+
         start = datetime.strptime(from_date, "%Y-%m-%d")
         end = datetime.strptime(to_date, "%Y-%m-%d")
+
         d = start
         while d <= end:
             ds = d.strftime("%Y-%m-%d")
+
             cursor.execute("""
                 SELECT
-                    (SELECT quantity FROM milk_collection WHERE vendor_id=%s AND user_id=%s AND date=%s AND slot='morning' AND milk_type='cow' LIMIT 1) AS cow_morning,
-                    (SELECT quantity FROM milk_collection WHERE vendor_id=%s AND user_id=%s AND date=%s AND slot='evening' AND milk_type='cow' LIMIT 1) AS cow_evening,
-                    (SELECT quantity FROM milk_collection WHERE vendor_id=%s AND user_id=%s AND date=%s AND slot='morning' AND milk_type='buffalo' LIMIT 1) AS buffalo_morning,
-                    (SELECT quantity FROM milk_collection WHERE vendor_id=%s AND user_id=%s AND date=%s AND slot='evening' AND milk_type='buffalo' LIMIT 1) AS buffalo_evening,
-                    (SELECT amount FROM advance WHERE vendor_id=%s AND user_id=%s AND date=%s LIMIT 1) AS advance_amt
+                    (SELECT quantity FROM milk_collection 
+                     WHERE vendor_id=%s AND user_id=%s AND date=%s 
+                     AND slot='morning' AND milk_type='cow' LIMIT 1) AS cow_morning,
+
+                    (SELECT quantity FROM milk_collection 
+                     WHERE vendor_id=%s AND user_id=%s AND date=%s 
+                     AND slot='evening' AND milk_type='cow' LIMIT 1) AS cow_evening,
+
+                    (SELECT quantity FROM milk_collection 
+                     WHERE vendor_id=%s AND user_id=%s AND date=%s 
+                     AND slot='morning' AND milk_type='buffalo' LIMIT 1) AS buffalo_morning,
+
+                    (SELECT quantity FROM milk_collection 
+                     WHERE vendor_id=%s AND user_id=%s AND date=%s 
+                     AND slot='evening' AND milk_type='buffalo' LIMIT 1) AS buffalo_evening,
+
+                    (SELECT amount FROM advance 
+                     WHERE vendor_id=%s AND user_id=%s AND date=%s LIMIT 1) AS advance_amt
             """, (vendor_id, session['id'], ds,
                   vendor_id, session['id'], ds,
                   vendor_id, session['id'], ds,
                   vendor_id, session['id'], ds,
                   vendor_id, session['id'], ds))
+
             rec = cursor.fetchone() or {}
+
             rec['date'] = ds
             rec['cow_morning'] = rec.get('cow_morning') or 0
             rec['cow_evening'] = rec.get('cow_evening') or 0
             rec['buffalo_morning'] = rec.get('buffalo_morning') or 0
             rec['buffalo_evening'] = rec.get('buffalo_evening') or 0
             rec['advance_amt'] = rec.get('advance_amt') or 0
-            # sack
-            cursor.execute("""
-                SELECT fs.sack_qty, fsr.rate AS cost_per_sack
-                FROM food_sack fs
-                JOIN food_sack_rates fsr ON fs.sack_rate_id = fsr.id
-                WHERE fs.vendor_id = %s AND fs.user_id = %s AND fs.date = %s
-            """, (vendor_id, session['id'], ds))
-            sack = cursor.fetchone()
-            if sack:
-                rec['sack_qty'] = sack['sack_qty']
-                rec['cost_per_sack'] = sack['cost_per_sack']
-                rec['total_cost'] = sack['sack_qty'] * sack['cost_per_sack']
-            else:
-                rec['sack_qty'] = 0
-                rec['cost_per_sack'] = 0
-                rec['total_cost'] = 0
+
             data.append(rec)
             d += timedelta(days=1)
-    return render_template('milk_operations/edit_entry.html', vendors=vendors, data=data)
 
-
+    return render_template(
+        'milk_operations/edit_entry.html',
+        vendors=vendors,
+        data=data,
+        selected_vendor_type=selected_vendor_type
+    )
 @app.route('/update_entries', methods=['POST'])
 def update_entries():
-    """
-    Safer approach:
-    - Build map of existing milk entries (by date, slot, milk_type)
-    - Compare with posted values, then INSERT / UPDATE / DELETE accordingly
-    """
+
     if "id" not in session:
         flash("Please login first.", "danger")
         return redirect(url_for("login"))
+
     vendor_id = request.form.get("vendor_id")
     from_date = request.form.get("from_date")
     to_date = request.form.get("to_date")
 
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    # ownership
-    cursor.execute("SELECT 1 FROM vendors WHERE vendor_id=%s AND user_id=%s", (vendor_id, session['id']))
-    if not cursor.fetchone():
+
+    # Ownership + milk_type
+    cursor.execute("""
+        SELECT milk_type
+        FROM vendors
+        WHERE vendor_id=%s AND user_id=%s
+    """, (vendor_id, session['id']))
+    vendor_info = cursor.fetchone()
+
+    if not vendor_info:
         flash("Unauthorized vendor.", "danger")
         return redirect(url_for("edit_entry"))
 
-    # load existing milk entries
+    vendor_type = vendor_info["milk_type"]
+
+    # Allowed milk types
+    if vendor_type == "cow":
+        allowed_types = ["cow"]
+    elif vendor_type == "buffalo":
+        allowed_types = ["buffalo"]
+    else:
+        allowed_types = ["cow", "buffalo"]
+
+    # Load existing milk entries
     cursor.execute("""
         SELECT id, date, slot, milk_type, quantity
         FROM milk_collection
-        WHERE vendor_id=%s AND user_id=%s AND date BETWEEN %s AND %s
+        WHERE vendor_id=%s AND user_id=%s
+        AND date BETWEEN %s AND %s
     """, (vendor_id, session['id'], from_date, to_date))
-    existing = cursor.fetchall() or []
+
+    existing = cursor.fetchall() or {}
     existing_map = {}
+
     for r in existing:
-        dstr = r['date'].strftime("%Y-%m-%d") if isinstance(r['date'], datetime) else str(r['date'])
-        existing_map[(dstr, r['slot'], r['milk_type'])] = {'id': r['id'], 'quantity': float(r['quantity'])}
+        dstr = r['date'].strftime("%Y-%m-%d")
+        existing_map[(dstr, r['slot'], r['milk_type'])] = {
+            'id': r['id'],
+            'quantity': float(r['quantity'])
+        }
 
-    # advances map
-    cursor.execute("SELECT id, date, amount FROM advance WHERE vendor_id=%s AND user_id=%s AND date BETWEEN %s AND %s",
-                   (vendor_id, session['id'], from_date, to_date))
-    advs = cursor.fetchall() or []
+    # Advances
+    cursor.execute("""
+        SELECT id, date, amount
+        FROM advance
+        WHERE vendor_id=%s AND user_id=%s
+        AND date BETWEEN %s AND %s
+    """, (vendor_id, session['id'], from_date, to_date))
+
+    advs = cursor.fetchall() or {}
     adv_map = {}
-    for a in advs:
-        dstr = a['date'].strftime("%Y-%m-%d") if isinstance(a['date'], datetime) else str(a['date'])
-        adv_map[dstr] = {'id': a['id'], 'amount': float(a['amount'])}
 
-    # iterate dates
+    for a in advs:
+        dstr = a['date'].strftime("%Y-%m-%d")
+        adv_map[dstr] = {
+            'id': a['id'],
+            'amount': float(a['amount'])
+        }
+
     cur_date = datetime.strptime(from_date, "%Y-%m-%d").date()
     end_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+
     while cur_date <= end_date:
         ds = cur_date.strftime("%Y-%m-%d")
-        # for each milk_type and slot
-        for milk_type in ('cow', 'buffalo'):
+
+        for milk_type in allowed_types:
             for slot in ('morning', 'evening'):
-                # possible form fields: cow_morning_YYYY-MM-DD OR cow_morning
-                keys = [f"{milk_type}_{slot}_{ds}", f"{milk_type}_{slot}"]
-                val = None
-                for k in keys:
-                    if k in request.form:
-                        val = request.form.get(k)
-                        break
-                try:
-                    qty = float(val or 0)
-                except:
-                    qty = 0
+
+                field_name = f"{milk_type}_{slot}_{ds}"
+                qty = float(request.form.get(field_name) or 0)
+
                 key = (ds, slot, milk_type)
                 existing_row = existing_map.get(key)
+
                 if qty > 0:
                     if existing_row:
-                        # update if changed
                         if abs(existing_row['quantity'] - qty) > 1e-9:
-                            cursor.execute("UPDATE milk_collection SET quantity=%s WHERE id=%s", (qty, existing_row['id']))
+                            cursor.execute(
+                                "UPDATE milk_collection SET quantity=%s WHERE id=%s",
+                                (qty, existing_row['id'])
+                            )
                     else:
-                        cursor.execute("INSERT INTO milk_collection (vendor_id, user_id, date, slot, milk_type, quantity) VALUES (%s,%s,%s,%s,%s,%s)",
-                                       (vendor_id, session['id'], ds, slot, milk_type, qty))
+                        cursor.execute("""
+                            INSERT INTO milk_collection
+                            (vendor_id, user_id, date, slot, milk_type, quantity)
+                            VALUES (%s,%s,%s,%s,%s,%s)
+                        """, (vendor_id, session['id'], ds, slot, milk_type, qty))
                 else:
-                    # qty == 0 -> delete if exists
                     if existing_row:
-                        cursor.execute("DELETE FROM milk_collection WHERE id=%s", (existing_row['id'],))
-        # advances
+                        cursor.execute(
+                            "DELETE FROM milk_collection WHERE id=%s",
+                            (existing_row['id'],)
+                        )
+
+        # Advance
         adv_field = f"advance_{ds}"
-        adv_val = None
-        if adv_field in request.form:
-            adv_val = request.form.get(adv_field)
-        elif "advance" in request.form:
-            adv_val = request.form.get("advance")
-        try:
-            adv_amt = float(adv_val or 0)
-        except:
-            adv_amt = 0
+        adv_amt = float(request.form.get(adv_field) or 0)
         existing_adv = adv_map.get(ds)
+
         if adv_amt > 0:
             if existing_adv:
                 if abs(existing_adv['amount'] - adv_amt) > 1e-9:
-                    cursor.execute("UPDATE advance SET amount=%s WHERE id=%s", (adv_amt, existing_adv['id']))
+                    cursor.execute(
+                        "UPDATE advance SET amount=%s WHERE id=%s",
+                        (adv_amt, existing_adv['id'])
+                    )
             else:
-                cursor.execute("INSERT INTO advance (vendor_id, user_id, date, amount) VALUES (%s,%s,%s,%s)",
-                               (vendor_id, session['id'], ds, adv_amt))
+                cursor.execute("""
+                    INSERT INTO advance (vendor_id, user_id, date, amount)
+                    VALUES (%s,%s,%s,%s)
+                """, (vendor_id, session['id'], ds, adv_amt))
         else:
             if existing_adv:
-                cursor.execute("DELETE FROM advance WHERE id=%s", (existing_adv['id'],))
+                cursor.execute(
+                    "DELETE FROM advance WHERE id=%s",
+                    (existing_adv['id'],)
+                )
+
         cur_date += timedelta(days=1)
 
     mysql.connection.commit()
-    audit_log(session['id'], 'update_entries', f"vendor={vendor_id} from={from_date} to={to_date}")
-    flash('Entries updated successfully.', 'success')
-    return redirect(url_for('edit_entry'))
-
+    flash("Entries updated successfully.", "success")
+    return redirect(url_for("edit_entry"))
 
 @app.route('/delete_entry', methods=['POST'])
 def delete_entry():
-    vendor_id = request.form.get('vendor_id') or request.args.get('vendor_id')
-    date_str = request.form.get('date') or request.args.get('date')
-    confirm = request.form.get('confirm') or request.args.get('confirm')
+
+    if "id" not in session:
+        flash("Please login first.", "danger")
+        return redirect(url_for("login"))
+
+    vendor_id = request.form.get('vendor_id')
+    date_str = request.form.get('date')
+    confirm = request.form.get('confirm')
+
     if str(confirm) != '1':
-        flash('Please confirm deletion (confirm=1).', 'warning')
+        flash("Please confirm deletion.", "warning")
         return redirect(url_for('edit_entry'))
+
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT 1 FROM vendors WHERE vendor_id=%s AND user_id=%s", (vendor_id, session['id']))
+
+    cursor.execute("""
+        SELECT 1 FROM vendors
+        WHERE vendor_id=%s AND user_id=%s
+    """, (vendor_id, session['id']))
+
     if not cursor.fetchone():
-        flash('Unauthorized to delete.', 'danger')
+        flash("Unauthorized to delete.", "danger")
         return redirect(url_for('edit_entry'))
+
     try:
-        cursor.execute("DELETE FROM milk_collection WHERE vendor_id=%s AND user_id=%s AND date=%s", (vendor_id, session['id'], date_str))
-        cursor.execute("DELETE FROM advance WHERE vendor_id=%s AND user_id=%s AND date=%s", (vendor_id, session['id'], date_str))
-        cursor.execute("DELETE FROM food_sack WHERE vendor_id=%s AND user_id=%s AND date=%s", (vendor_id, session['id'], date_str))
+        cursor.execute("DELETE FROM milk_collection WHERE vendor_id=%s AND user_id=%s AND date=%s",
+                       (vendor_id, session['id'], date_str))
+        cursor.execute("DELETE FROM advance WHERE vendor_id=%s AND user_id=%s AND date=%s",
+                       (vendor_id, session['id'], date_str))
+        cursor.execute("DELETE FROM food_sack WHERE vendor_id=%s AND user_id=%s AND date=%s",
+                       (vendor_id, session['id'], date_str))
+
         mysql.connection.commit()
-        audit_log(session['id'], 'delete_entry', f"vendor={vendor_id} date={date_str}")
-        flash('Entry deleted.', 'success')
-    except Exception:
-        logging.exception("Error deleting entry")
-        flash('Error deleting entry.', 'danger')
+        flash("Entry deleted successfully.", "success")
+
+    except Exception as e:
+        mysql.connection.rollback()
+        flash("Error deleting entry.", "danger")
+
     return redirect(url_for('edit_entry'))
-
-
-
 # ------------------------------
 # Receipts, calculation, payment (kept logic but with small safety)
 # ------------------------------
@@ -1179,122 +1359,144 @@ def calculation():
         return redirect(url_for('login'))
 
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT * FROM vendors WHERE user_id = %s", (session['id'],))
+    cursor.execute("""
+SELECT * FROM vendors
+WHERE user_id = %s
+ORDER BY vendor_id ASC
+""", (session['id'],))
     vendors = cursor.fetchall()
-    results = {}
+
+    results = None
 
     if request.method == 'POST':
-        # Accept both AJAX JSON and normal form POST
-        if request.is_json:
-            data = request.get_json(silent=True) or {}
-            vendor_id = data.get('vendor_id')
-            start_date = data.get('start_date')
-            end_date = data.get('end_date')
-        else:
-            vendor_id = request.form.get('vendor_id')
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
 
+        # ✅ NORMAL FORM POST
+        vendor_id = request.form.get('vendor_id')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+
+        # ---------- rates ----------
+        cursor.execute("""
+            SELECT * FROM milk_rates 
+            WHERE user_id = %s 
+            ORDER BY date_from DESC
+        """, (session['id'],))
+        rates = cursor.fetchall()
+
+        def get_rate(animal, d):
+            for r in rates:
+                if r['animal'] == animal and d >= r['date_from']:
+                    return float(r['rate'])
+            return 0
+
+        # ---------- milk collection ----------
+        cursor.execute("""
+            SELECT date, slot, milk_type, quantity
+            FROM milk_collection
+            WHERE vendor_id=%s AND user_id=%s
+            AND date BETWEEN %s AND %s
+        """, (vendor_id, session['id'], start_date, end_date))
+        milk_data = cursor.fetchall()
+
+        mcq = ecq = mbq = ebq = 0
+        mcp = ecp = mbp = ebp = 0
+
+        for row in milk_data:
+            rate = get_rate(row['milk_type'], row['date'])
+            amt = float(row['quantity']) * rate
+
+            if row['milk_type'] == 'cow':
+                if row['slot'] == 'morning':
+                    mcq += row['quantity']; mcp += amt
+                else:
+                    ecq += row['quantity']; ecp += amt
+            else:
+                if row['slot'] == 'morning':
+                    mbq += row['quantity']; mbp += amt
+                else:
+                    ebq += row['quantity']; ebp += amt
+
+        # ---------- advance ----------
+        cursor.execute("""
+            SELECT SUM(amount) total
+            FROM advance
+            WHERE vendor_id=%s AND user_id=%s
+            AND date BETWEEN %s AND %s
+        """, (vendor_id, session['id'], start_date, end_date))
+        total_advance = cursor.fetchone()['total'] or 0
+
+        # ---------- food sack ----------
+        cursor.execute("""
+            SELECT SUM(total_cost) total
+            FROM food_sack
+            WHERE vendor_id=%s AND user_id=%s
+            AND date BETWEEN %s AND %s
+        """, (vendor_id, session['id'], start_date, end_date))
+        total_food = cursor.fetchone()['total'] or 0
+
+        milk_total = mcp + ecp + mbp + ebp
+        final_payment = milk_total - (total_advance + total_food)
+
+        results = {
+            'morning_cow_quantity': mcq,
+            'evening_cow_quantity': ecq,
+            'morning_cow_payment': mcp,
+            'evening_cow_payment': ecp,
+            'total_cow_quantity': mcq + ecq,
+            'total_cow_payment': mcp + ecp,
+
+            'morning_buffalo_quantity': mbq,
+            'evening_buffalo_quantity': ebq,
+            'morning_buffalo_payment': mbp,
+            'evening_buffalo_payment': ebp,
+            'total_buffalo_quantity': mbq + ebq,
+            'total_buffalo_payment': mbp + ebp,
+
+            'total_milk_quantity': mcq + ecq + mbq + ebq,
+            'milk_total': milk_total,
+            'total_food_sack_cost': total_food,
+            'total_advance': total_advance,
+            'final_payable_amount': final_payment
+        }
+
+    return render_template(
+        'milk_operations/calculation.html',
+        vendors=vendors,
+        results=results
+    )
+
+@app.route('/payment', methods=['GET', 'POST'])
+def payment():
+    # 🔐 basic safety
+    if 'id' not in session:
+        flash('Please login first.', 'danger')
+        return redirect(url_for('login'))
+
+    # 🔥 POST → REDIRECT (PRG)
+    if request.method == 'POST':
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+
+        return redirect(url_for(
+            'payment',
+            start_date=start_date,
+            end_date=end_date
+        ))
+
+    # =========================
+    # GET request (real work)
+    # =========================
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    data = []
+
+    if start_date and end_date:
         cursor.execute(
             "SELECT * FROM milk_rates WHERE user_id = %s ORDER BY date_from DESC",
             (session['id'],)
         )
-        rates = cursor.fetchall()
-
-        def get_rate(animal, d):
-            for rate in rates:
-                if rate['animal'] == animal and d >= rate['date_from']:
-                    return float(rate['rate'])
-            return 0
-
-        # Aggregates
-        morning_cow_quantity = evening_cow_quantity = morning_cow_payment = evening_cow_payment = 0
-        morning_buffalo_quantity = evening_buffalo_quantity = morning_buffalo_payment = evening_buffalo_payment = 0
-        total_cow_payment = total_buffalo_payment = 0
-
-        cursor.execute("""
-            SELECT date, slot, milk_type, quantity
-            FROM milk_collection
-            WHERE vendor_id=%s AND user_id=%s AND date BETWEEN %s AND %s
-        """, (vendor_id, session['id'], start_date, end_date))
-        milk_data = cursor.fetchall()
-        for row in milk_data:
-            d = row['date']
-            rate = get_rate(row['milk_type'], d)
-            amt = float(row['quantity']) * rate
-            if row['milk_type'] == 'cow':
-                if row['slot'] == 'morning':
-                    morning_cow_quantity += float(row['quantity'])
-                    morning_cow_payment += amt
-                else:
-                    evening_cow_quantity += float(row['quantity'])
-                    evening_cow_payment += amt
-                total_cow_payment += amt
-            else:
-                if row['slot'] == 'morning':
-                    morning_buffalo_quantity += float(row['quantity'])
-                    morning_buffalo_payment += amt
-                else:
-                    evening_buffalo_quantity += float(row['quantity'])
-                    evening_buffalo_payment += amt
-                total_buffalo_payment += amt
-
-        cursor.execute("""
-            SELECT SUM(amount) AS total_advance
-            FROM advance
-            WHERE vendor_id=%s AND user_id=%s AND date BETWEEN %s AND %s
-        """, (vendor_id, session['id'], start_date, end_date))
-        advance = cursor.fetchone()
-
-        cursor.execute("""
-            SELECT SUM(total_cost) AS total_food_sack_cost
-            FROM food_sack
-            WHERE vendor_id=%s AND user_id=%s AND date BETWEEN %s AND %s
-        """, (vendor_id, session['id'], start_date, end_date))
-        sack = cursor.fetchone()
-
-        total_food_sack = sack['total_food_sack_cost'] or 0
-        total_advance = advance['total_advance'] or 0
-        milk_total = total_cow_payment + total_buffalo_payment
-        deductions = total_food_sack + total_advance
-        final_payment = milk_total - deductions
-
-        results = {
-            'morning_cow_quantity': morning_cow_quantity,
-            'evening_cow_quantity': evening_cow_quantity,
-            'morning_cow_payment': round(morning_cow_payment, 2),
-            'evening_cow_payment': round(evening_cow_payment, 2),
-            'total_cow_quantity': morning_cow_quantity + evening_cow_quantity,
-            'total_cow_payment': round(total_cow_payment, 2),
-            'morning_buffalo_quantity': morning_buffalo_quantity,
-            'evening_buffalo_quantity': evening_buffalo_quantity,
-            'morning_buffalo_payment': round(morning_buffalo_payment, 2),
-            'evening_buffalo_payment': round(evening_buffalo_payment, 2),
-            'total_buffalo_quantity': morning_buffalo_quantity + evening_buffalo_quantity,
-            'total_buffalo_payment': round(total_buffalo_payment, 2),
-            'total_milk_quantity': morning_cow_quantity + evening_cow_quantity + morning_buffalo_quantity + evening_buffalo_quantity,
-            'milk_total': round(milk_total, 2),
-            'total_food_sack_cost': round(total_food_sack, 2),
-            'total_advance': round(total_advance, 2),
-            'deductions': round(deductions, 2),
-            'final_payable_amount': round(final_payment, 2)
-        }
-
-        # If this was an AJAX request, return JSON with rendered HTML
-        if request.is_json:
-            html = render_template("milk_operations/calculation.html", vendors=vendors, results=results)
-            return jsonify({"success": True, "html": html, "message": "Calculation complete"}), 200
-
-    return render_template('milk_operations/calculation.html', vendors=vendors, results=results)
-
-@app.route('/payment', methods=['GET', 'POST'])
-def payment():
-    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    data = []
-    if request.method == 'POST':
-        start_date = request.form.get('start_date')
-        end_date = request.form.get('end_date')
-        cursor.execute("SELECT * FROM milk_rates WHERE user_id = %s ORDER BY date_from DESC", (session['id'],))
         all_rates = cursor.fetchall()
 
         def get_rate(animal, d):
@@ -1303,31 +1505,56 @@ def payment():
                     return float(rate['rate'])
             return 0
 
-        cursor.execute("SELECT * FROM vendors WHERE user_id = %s", (session['id'],))
+        cursor.execute("""
+SELECT * FROM vendors
+WHERE user_id = %s
+ORDER BY vendor_id ASC
+""", (session['id'],))
         vendors = cursor.fetchall()
+
         for v in vendors:
             vendor_id = v['vendor_id']
-            cursor.execute("SELECT date, milk_type, quantity FROM milk_collection WHERE vendor_id = %s AND user_id = %s AND date BETWEEN %s AND %s",
-                           (vendor_id, session['id'], start_date, end_date))
+
+            cursor.execute("""
+                SELECT date, milk_type, quantity
+                FROM milk_collection
+                WHERE vendor_id = %s AND user_id = %s
+                  AND date BETWEEN %s AND %s
+            """, (vendor_id, session['id'], start_date, end_date))
             milk_entries = cursor.fetchall()
+
             total_cow = total_buffalo = cow_cost = buffalo_cost = 0
+
             for m in milk_entries:
                 rate = get_rate(m['milk_type'], m['date'])
                 qty = float(m['quantity'])
+
                 if m['milk_type'] == 'cow':
                     total_cow += qty
                     cow_cost += qty * rate
                 else:
                     total_buffalo += qty
                     buffalo_cost += qty * rate
-            cursor.execute("SELECT SUM(amount) AS total_advance FROM advance WHERE vendor_id = %s AND user_id = %s AND date BETWEEN %s AND %s",
-                           (vendor_id, session['id'], start_date, end_date))
+
+            cursor.execute("""
+                SELECT SUM(amount) AS total_advance
+                FROM advance
+                WHERE vendor_id = %s AND user_id = %s
+                  AND date BETWEEN %s AND %s
+            """, (vendor_id, session['id'], start_date, end_date))
             adv = cursor.fetchone()['total_advance'] or 0
-            cursor.execute("SELECT SUM(total_cost) AS total_food FROM food_sack WHERE vendor_id = %s AND user_id = %s AND date BETWEEN %s AND %s",
-                           (vendor_id, session['id'], start_date, end_date))
+
+            cursor.execute("""
+                SELECT SUM(total_cost) AS total_food
+                FROM food_sack
+                WHERE vendor_id = %s AND user_id = %s
+                  AND date BETWEEN %s AND %s
+            """, (vendor_id, session['id'], start_date, end_date))
             food = cursor.fetchone()['total_food'] or 0
+
             total_milk_payment = round(cow_cost + buffalo_cost, 2)
             total_payment = round(total_milk_payment - adv - food, 2)
+
             data.append({
                 'vendor_id': vendor_id,
                 'vendor_name': v['name'],
@@ -1340,22 +1567,29 @@ def payment():
                 'total_food': food,
                 'total_payment': total_payment
             })
-    return render_template('milk_operations/payment.html', data=data)
 
+    return render_template(
+        'milk_operations/payment.html',
+        data=data
+    )
 
 @app.route('/receipt_all_vendors', methods=['GET', 'POST'])
 def receipt_all_vendors():
     if 'id' not in session:
         return redirect(url_for('login'))
+
     user_id = session.get('id')
     try:
         user_id = int(user_id)
     except:
         pass
+
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
     if request.method == 'POST':
         from_date = request.form.get('from_date')
         to_date = request.form.get('to_date')
+
         cursor.execute("SELECT * FROM milk_rates WHERE user_id = %s ORDER BY date_from DESC", (user_id,))
         rate_data = cursor.fetchall()
 
@@ -1370,62 +1604,105 @@ def receipt_all_vendors():
                     return float(rate['rate'])
             return 0
 
-        # ✅ Now also fetching address
-        cursor.execute("SELECT vendor_id, name, milk_type, address FROM vendors WHERE user_id = %s", (user_id,))
+        cursor.execute("""
+        SELECT vendor_id, name, milk_type, address
+        FROM vendors
+        WHERE user_id = %s
+        ORDER BY vendor_id ASC
+        """, (user_id,))
         vendors = cursor.fetchall()
+
         all_receipts = []
+
         for vendor in vendors:
             vendor_id = vendor['vendor_id']
+
             cursor.execute("""
-                SELECT DATE(date) AS full_date, DATE_FORMAT(date, '%%d') AS day, slot, milk_type, quantity
+                SELECT DATE(date) AS full_date, DATE_FORMAT(date, '%%d') AS day,
+                       slot, milk_type, quantity
                 FROM milk_collection
-                WHERE vendor_id = %s AND user_id = %s AND date BETWEEN %s AND %s
+                WHERE vendor_id = %s AND user_id = %s
+                AND date BETWEEN %s AND %s
                 ORDER BY date ASC
             """, (vendor_id, user_id, from_date, to_date))
+
             milk_data = cursor.fetchall()
+
             grouped = {}
-            totals = {'cow_morning': 0, 'cow_evening': 0, 'buffalo_morning': 0, 'buffalo_evening': 0}
-            cow_cost = buffalo_cost = 0
+            totals = {
+                'cow_morning': 0, 'cow_evening': 0,
+                'buffalo_morning': 0, 'buffalo_evening': 0
+            }
+
+            cow_cost = 0
+            buffalo_cost = 0
+
             for row in milk_data:
                 dt = row['full_date']
                 slot = row['slot']
                 mtype = row['milk_type']
                 qty = float(row['quantity'])
                 rate = get_rate(mtype, dt)
+
                 if dt not in grouped:
-                    grouped[dt] = {'day': row['day'], 'cow_morning': 0, 'cow_evening': 0,
-                                   'buffalo_morning': 0, 'buffalo_evening': 0}
-                totals[f"{mtype}_{slot}"] += qty
+                    grouped[dt] = {
+                        'day': row['day'],
+                        'cow_morning': 0,
+                        'cow_evening': 0,
+                        'buffalo_morning': 0,
+                        'buffalo_evening': 0
+                    }
+
                 grouped[dt][f"{mtype}_{slot}"] += qty
+                totals[f"{mtype}_{slot}"] += qty
+
                 if mtype == 'cow':
                     cow_cost += qty * rate
                 else:
                     buffalo_cost += qty * rate
+
             entries = list(grouped.values())
 
             cursor.execute("""
-                SELECT fs.sack_qty, r.name, r.rate, (fs.sack_qty * r.rate) AS total
-                FROM food_sack fs JOIN food_sack_rates r ON fs.sack_rate_id = r.id
-                WHERE fs.vendor_id=%s AND fs.user_id=%s AND fs.date BETWEEN %s AND %s
+                SELECT fs.sack_qty, r.name, r.rate,
+                       (fs.sack_qty * r.rate) AS total
+                FROM food_sack fs
+                JOIN food_sack_rates r ON fs.sack_rate_id = r.id
+                WHERE fs.vendor_id=%s AND fs.user_id=%s
+                AND fs.date BETWEEN %s AND %s
             """, (vendor_id, user_id, from_date, to_date))
+
             food_data = cursor.fetchall()
             food_total = sum(f['total'] for f in food_data) if food_data else 0
-            food_sack_details = [{'name': f['name'], 'rate': f['rate'], 'qty': f['sack_qty'], 'total': f['total']} for f in food_data]
+
+            food_sack_details = [
+                {
+                    'name': f['name'],
+                    'rate': f['rate'],
+                    'qty': f['sack_qty'],
+                    'total': f['total']
+                }
+                for f in food_data
+            ]
 
             cursor.execute("""
                 SELECT SUM(amount) AS total_advance
                 FROM advance
-                WHERE vendor_id=%s AND user_id=%s AND date BETWEEN %s AND %s
+                WHERE vendor_id=%s AND user_id=%s
+                AND date BETWEEN %s AND %s
             """, (vendor_id, user_id, from_date, to_date))
+
             advance = cursor.fetchone()['total_advance'] or 0
 
             final_payable = round((cow_cost + buffalo_cost) - (advance + food_total), 2)
+
             cow_rate = get_rate('cow', datetime.strptime(from_date, "%Y-%m-%d").date())
             buffalo_rate = get_rate('buffalo', datetime.strptime(from_date, "%Y-%m-%d").date())
 
             all_receipts.append({
+                'vendor_id': vendor_id,
                 'name': vendor['name'],
-                'address': vendor['address'],  # ✅ new
+                'address': vendor['address'],
                 'milk_type': vendor['milk_type'],
                 'data': entries,
                 'total_cow': totals['cow_morning'] + totals['cow_evening'],
@@ -1443,11 +1720,12 @@ def receipt_all_vendors():
                 'cow_rate': cow_rate,
                 'buffalo_rate': buffalo_rate
             })
+
         cursor.close()
         return render_template('receipt_all_vendors.html', receipts=all_receipts)
+
     cursor.close()
     return render_template('receipt_all_vendors.html', receipts=None)
-
 
 # ------------------------------
 # Edit food sack & delete
@@ -1531,9 +1809,30 @@ def delete_food_sack(sack_id):
 # ------------------------------
 @app.route('/milk_summary', methods=['GET', 'POST'])
 def milk_summary():
-    from_date = request.form.get('from_date') if request.method == 'POST' else request.args.get('from_date')
-    to_date = request.form.get('to_date') if request.method == 'POST' else request.args.get('to_date')
-    totals = {'cow_morning': 0, 'cow_evening': 0, 'buffalo_morning': 0, 'buffalo_evening': 0}
+    # 🔥 POST → REDIRECT (PRG)
+    if request.method == 'POST':
+        from_date = request.form.get('from_date')
+        to_date = request.form.get('to_date')
+
+        return redirect(url_for(
+            'milk_summary',
+            from_date=from_date,
+            to_date=to_date
+        ))
+
+    # =========================
+    # GET request (real work)
+    # =========================
+    from_date = request.args.get('from_date')
+    to_date = request.args.get('to_date')
+
+    totals = {
+        'cow_morning': 0,
+        'cow_evening': 0,
+        'buffalo_morning': 0,
+        'buffalo_evening': 0
+    }
+
     if from_date and to_date:
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("""
@@ -1542,19 +1841,122 @@ def milk_summary():
             WHERE user_id = %s AND date BETWEEN %s AND %s
             GROUP BY milk_type, slot
         """, (session['id'], from_date, to_date))
+
         for row in cursor.fetchall():
             key = f"{row['milk_type']}_{row['slot']}"
             if key in totals:
                 totals[key] = row['total_qty'] or 0
+
         cursor.close()
+
     totals['cow_total'] = (totals['cow_morning'] or 0) + (totals['cow_evening'] or 0)
     totals['buffalo_total'] = (totals['buffalo_morning'] or 0) + (totals['buffalo_evening'] or 0)
     totals['grand_total'] = totals['cow_total'] + totals['buffalo_total']
-    return render_template("milk_operations/milk_summary.html", from_date=from_date, to_date=to_date, totals=totals)
+
+    return render_template(
+        "milk_operations/milk_summary.html",
+        from_date=from_date,
+        to_date=to_date,
+        totals=totals
+    )
 
 
+# ------------------------------
+# Vendor Range Summary Page
+# ------------------------------
+@app.route("/vendor_range_summary", methods=["GET", "POST"])
+def vendor_range_summary():
 
+    if "id" not in session:
+        return redirect(url_for("login"))
 
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    # Load vendor list
+    cursor.execute("""
+        SELECT vendor_id, name 
+        FROM vendors 
+        WHERE user_id=%s 
+        ORDER BY vendor_id ASC
+    """, (session["id"],))
+    vendors = cursor.fetchall()
+
+    results = []
+    from_date = None
+    to_date = None
+
+    # GRAND TOTAL VARIABLES
+    grand_totals = {
+        "cow_morning": 0,
+        "cow_evening": 0,
+        "buffalo_morning": 0,
+        "buffalo_evening": 0,
+        "cow_total": 0,
+        "buffalo_total": 0
+    }
+
+    if request.method == "POST":
+
+        from_date = request.form.get("from_date")
+        to_date = request.form.get("to_date")
+        selected_vendors = request.form.getlist("vendors")
+
+        for vendor_id in selected_vendors:
+
+            cursor.execute("""
+                SELECT name FROM vendors
+                WHERE vendor_id=%s AND user_id=%s
+            """, (vendor_id, session["id"]))
+            vendor = cursor.fetchone()
+            if not vendor:
+                continue
+
+            cursor.execute("""
+                SELECT milk_type, slot, SUM(quantity) as total_qty
+                FROM milk_collection
+                WHERE vendor_id=%s AND user_id=%s
+                AND date BETWEEN %s AND %s
+                GROUP BY milk_type, slot
+            """, (vendor_id, session["id"], from_date, to_date))
+
+            data = cursor.fetchall()
+
+            summary = {
+                "vendor_id": vendor_id,
+                "name": vendor["name"],
+                "cow_morning": 0,
+                "cow_evening": 0,
+                "buffalo_morning": 0,
+                "buffalo_evening": 0
+            }
+
+            for row in data:
+                key = f"{row['milk_type']}_{row['slot']}"
+                summary[key] = row["total_qty"] or 0
+
+            summary["cow_total"] = summary["cow_morning"] + summary["cow_evening"]
+            summary["buffalo_total"] = summary["buffalo_morning"] + summary["buffalo_evening"]
+
+            # ADD INTO GRAND TOTALS
+            grand_totals["cow_morning"] += summary["cow_morning"]
+            grand_totals["cow_evening"] += summary["cow_evening"]
+            grand_totals["buffalo_morning"] += summary["buffalo_morning"]
+            grand_totals["buffalo_evening"] += summary["buffalo_evening"]
+            grand_totals["cow_total"] += summary["cow_total"]
+            grand_totals["buffalo_total"] += summary["buffalo_total"]
+
+            results.append(summary)
+
+    cursor.close()
+
+    return render_template(
+        "vendor_range_summary.html",
+        vendors=vendors,
+        results=results,
+        from_date=from_date,
+        to_date=to_date,
+        grand_totals=grand_totals
+    )
 
 @app.context_processor
 def inject_now():
@@ -1661,6 +2063,26 @@ def terms():
 def privacy():
     return render_template("head/privacy.html")  # Privacy Policy
 
+
+
+
+from flask import send_from_directory
+
+@app.route("/manifest.json")
+def manifest():
+    return send_from_directory("static", "manifest.json")
+
+@app.route("/service-worker.js")
+def service_worker():
+    return send_from_directory("static", "service-worker.js")
+
+@app.after_request
+def disable_cache(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 # ------------------------------
 # Healthcheck (simple)
 # ------------------------------
@@ -1668,5 +2090,6 @@ def privacy():
 def healthcheck():
     return "OK"
 
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

@@ -1,4 +1,4 @@
-.env
-audit.log
 __pycache__/
-*.pyc
+.env
+tempCodeRunnerFile.py
+audit.log

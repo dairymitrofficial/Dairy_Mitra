@@ -1,86 +1,151 @@
-/* 🌟 Common Auth Page Styles */
-body.auth-body {
-    font-family: 'Poppins', sans-serif;
-    background: linear-gradient(to bottom right, #e3f2fd, #ffffff);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* ===============================
+   AUTH – WHITE & BLUE THEME
+   (ONLY AUTH PAGES)
+================================ */
+
+/* ---------- THEME ---------- */
+.auth-body{
+  --auth-primary:#2563eb;        /* blue-600 */
+  --auth-primary-dark:#1d4ed8;   /* blue-700 */
+  --auth-accent:#3b82f6;         /* blue-500 */
+
+  --auth-bg:#f8fafc;             /* very light */
+  --auth-card:#ffffff;
+  --auth-text:#0f172a;
+  --auth-muted:#64748b;
+  --auth-border:#e5e7eb;
+
+  --auth-radius:16px;
+  --auth-shadow:0 20px 40px rgba(15,23,42,.12);
 }
 
-/* 🔒 Auth Card */
-.auth-card {
-    background: #fff;
-    border-radius: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    padding: 2rem;
-    width: 100%;
-    max-width: 420px;
-    animation: fadeIn 0.8s ease-in-out;
+/* ---------- RESET ---------- */
+.auth-body *{
+  box-sizing:border-box;
 }
 
-/* 🌟 Logo + Title */
-.auth-logo {
-    display: block;
-    margin: 0 auto 15px auto;
-    height: 60px;
-}
-.auth-title {
-    font-weight: 600;
-    font-size: 1.3rem;
-    text-align: center;
-    margin-bottom: 5px;
-}
-.auth-subtitle {
-    font-size: 0.9rem;
-    color: #6c757d;
-    text-align: center;
-    margin-bottom: 1.5rem;
+/* ---------- PAGE ---------- */
+.auth-body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at top,#dbeafe,transparent 55%),
+    var(--auth-bg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
 }
 
-/* 🎯 Form Inputs */
-.form-floating .form-control {
-    border-radius: 50px;
-    padding-left: 2.5rem;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
-}
-.form-floating label {
-    font-size: 0.9rem;
-}
-
-/* 🖱️ Buttons */
-.btn-auth {
-    border-radius: 50px;
-    font-weight: 600;
-    padding: 0.6rem;
-    transition: all 0.3s;
-}
-.btn-auth:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 123, 255, 0.25);
+/* ---------- CARD ---------- */
+.auth-card{
+  background:var(--auth-card);
+  width:100%;
+  max-width:380px;
+  padding:30px 26px;
+  border-radius:var(--auth-radius);
+  box-shadow:var(--auth-shadow);
+  animation:authFade .35s ease;
 }
 
-/* 🔔 Flash Messages */
-.alert {
-    border-radius: 10px;
-    font-size: 0.9rem;
-    padding: 0.5rem 0.8rem;
-    margin-bottom: 1rem;
+@keyframes authFade{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:none}
 }
 
-/* Links */
-.auth-links a {
-    font-size: 0.9rem;
-    color: #0d6efd;
-    text-decoration: none;
-    margin: 0 5px;
-}
-.auth-links a:hover {
-    text-decoration: underline;
+/* ---------- LOGO ---------- */
+.auth-logo{
+  width:76px;
+  display:block;
+  margin:0 auto 14px;
 }
 
-/* ✨ Animation */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+/* ---------- TITLES ---------- */
+.auth-title{
+  text-align:center;
+  font-size:19px;
+  font-weight:700;
+  color:var(--auth-text);
+  margin-bottom:6px;
+}
+
+.auth-subtitle{
+  text-align:center;
+  font-size:13px;
+  color:var(--auth-muted);
+  margin-bottom:20px;
+}
+
+/* ---------- FORM ---------- */
+.auth-card form > *{
+  margin-bottom:16px;
+}
+
+.form-floating > .form-control{
+  border-radius:14px;
+  border:1px solid var(--auth-border);
+  font-size:14px;
+}
+
+.form-floating > .form-control:focus{
+  border-color:var(--auth-primary);
+  box-shadow:0 0 0 3px rgba(37,99,235,.18);
+}
+
+/* ---------- BUTTONS ---------- */
+.auth-body .btn{
+  height:46px;
+  border-radius:14px;
+  font-size:15px;
+  font-weight:600;
+}
+
+/* MAIN AUTH BUTTON */
+.auth-body .btn-primary,
+.auth-body .btn-success{
+  background:var(--auth-primary);
+  border:none;
+  color:#fff;
+}
+
+.auth-body .btn-primary:hover,
+.auth-body .btn-success:hover{
+  background:var(--auth-primary-dark);
+}
+
+/* SECONDARY */
+.auth-body .btn-secondary{
+  background:#e5e7eb;
+  color:var(--auth-text);
+}
+
+/* ---------- LINKS ---------- */
+.auth-links{
+  text-align:center;
+  margin-top:10px;
+}
+
+.auth-links a{
+  font-size:13px;
+  color:var(--auth-primary);
+  text-decoration:none;
+  font-weight:600;
+}
+
+.auth-links a:hover{
+  text-decoration:underline;
+}
+
+/* ---------- ALERTS ---------- */
+.auth-body .alert{
+  font-size:13px;
+  padding:10px 12px;
+  border-radius:12px;
+}
+
+/* ---------- MOBILE ---------- */
+@media(max-width:420px){
+  .auth-card{
+    padding:24px 18px;
+  }
 }

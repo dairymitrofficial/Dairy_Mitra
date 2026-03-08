@@ -1,0 +1,135 @@
+/* =====================================
+   SECURITY PAGES – SIMPLE CLEAN STYLE
+===================================== */
+
+.security-body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f1f5f9;
+    font-family:Inter, system-ui, sans-serif;
+    padding:20px;
+}
+
+.security-card{
+    width:100%;
+    max-width:360px;
+    background:#ffffff;
+    padding:28px 24px;
+    border-radius:16px;
+    box-shadow:0 15px 35px rgba(15,23,42,.08);
+    animation:fadeIn .25s ease;
+}
+
+@keyframes fadeIn{
+    from{opacity:0; transform:translateY(10px)}
+    to{opacity:1; transform:none}
+}
+
+.security-title{
+    text-align:center;
+    font-size:18px;
+    font-weight:700;
+    margin-bottom:6px;
+    color:#0f172a;
+}
+
+.security-subtitle{
+    text-align:center;
+    font-size:13px;
+    color:#64748b;
+    margin-bottom:20px;
+}
+
+/* INPUT */
+.security-input{
+    width:100%;
+    height:44px;
+    padding:0 12px;
+    border-radius:12px;
+    border:1px solid #e2e8f0;
+    font-size:14px;
+    margin-bottom:14px;
+    transition:.2s;
+}
+
+.security-input:focus{
+    outline:none;
+    border-color:#2563eb;
+    box-shadow:0 0 0 3px rgba(37,99,235,.15);
+}
+
+/* BUTTON */
+.security-btn{
+    width:100%;
+    height:44px;
+    border:none;
+    border-radius:12px;
+    font-weight:600;
+    background:#2563eb;
+    color:#ffffff;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.security-btn:hover{
+    background:#1d4ed8;
+}
+
+/* SECONDARY BUTTON */
+.security-btn-secondary{
+    background:#e2e8f0;
+    color:#0f172a;
+}
+
+.security-btn-secondary:hover{
+    background:#cbd5e1;
+}
+
+/* LINKS */
+.security-links{
+    text-align:center;
+    margin-top:14px;
+}
+
+.security-links a{
+    font-size:13px;
+    text-decoration:none;
+    color:#2563eb;
+    font-weight:600;
+}
+
+.security-links a:hover{
+    text-decoration:underline;
+}
+
+/* ALERT */
+.security-alert{
+    padding:10px 12px;
+    border-radius:10px;
+    font-size:13px;
+    margin-bottom:12px;
+}
+
+.security-alert-success{
+    background:#dcfce7;
+    color:#166534;
+}
+
+.security-alert-danger{
+    background:#fee2e2;
+    color:#991b1b;
+}
+
+.security-alert-warning{
+    background:#fef3c7;
+    color:#92400e;
+}
+
+/* MOBILE */
+@media(max-width:400px){
+    .security-card{
+        padding:22px 18px;
+    }
+}

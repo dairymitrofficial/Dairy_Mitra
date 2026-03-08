@@ -1,88 +1,110 @@
 {% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
 
 {% block content %}
-    <!-- Dairy Name -->
-    <div class="flex flex-col items-center mb-6">
-        <h2 class="text-3xl font-bold text-slate-800">
-            {{ session.get('dairy_name', 'Your Dairy Name') }}
-        </h2>
-    </div>
 
-    <!-- Dashboard Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+<h2 class="page-title">
+  {{ session.get("dairy_name","My Dairy") }}
+</h2>
 
-    <a href="{{ url_for('milk_collection') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-cow text-3xl mb-2"></i>
-        <div>दूध जमा करा</div>
+<!-- TODAY ACTIONS -->
+<section class="section">
+  <h4>आजचं काम</h4>
+  <div class="grid-cards">
+
+    <!-- दूध जमा -->
+    <a class="card card-action" href="{{ url_for('milk_collection') }}">
+      <span class="iconify icon-blue"
+            data-icon="material-symbols:local-drink-outline"></span>
+      <span>दूध जमा</span>
     </a>
 
-    <a href="{{ url_for('add_vendor') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-user-plus text-3xl mb-2"></i>
-        <div>नवीन ग्राहक नोंदवा</div>
+    <!-- आजचा हिशोब -->
+    <a class="card card-action" href="{{ url_for('calculation') }}">
+      <span class="iconify icon-teal"
+            data-icon="material-symbols:calculate-outline"></span>
+      <span>आजचा हिशोब</span>
     </a>
 
-    <a href="{{ url_for('edit_entry') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-pen-to-square text-3xl mb-2"></i>
-        <div>नोंदी बदला</div>
+    <!-- पावती -->
+    <a class="card card-action" href="{{ url_for('receipt_all_vendors') }}">
+      <span class="iconify icon-purple"
+            data-icon="material-symbols:receipt-long-outline"></span>
+      <span>पावती</span>
     </a>
 
-    <a href="{{ url_for('vendor_list') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-users text-3xl mb-2"></i>
-        <div>ग्राहक यादी</div>
+  </div>
+</section>
+
+<!-- DAILY -->
+<section class="section mt-4">
+  <h4>दैनंदिन काम</h4>
+  <div class="grid-cards">
+
+    <!-- नवीन ग्राहक -->
+    <a class="card card-action" href="{{ url_for('add_vendor') }}">
+      <span class="iconify icon-sky"
+            data-icon="material-symbols:person-add-outline"></span>
+      <span>नवीन ग्राहक</span>
     </a>
 
-    <a href="{{ url_for('food_sack') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-box text-3xl mb-2"></i>
-        <div>पेंड पोती घेतली</div>
+    <!-- नोंदी बदला -->
+    <a class="card card-action" href="{{ url_for('edit_entry') }}">
+      <span class="iconify icon-amber"
+            data-icon="material-symbols:edit-document-outline"></span>
+      <span>नोंदी बदला</span>
     </a>
 
-    <a href="{{ url_for('advance') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-hand-holding-dollar text-3xl mb-2"></i>
-        <div>ॲडव्हान्स घेतला</div>
+    <!-- पेंड -->
+    <a class="card card-action" href="{{ url_for('food_sack') }}">
+      <span class="iconify icon-green"
+            data-icon="material-symbols:agriculture-outline"></span>
+      <span>पेंड</span>
     </a>
 
-    <a href="{{ url_for('calculation') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-calculator text-3xl mb-2"></i>
-        <div>सविस्तर हिशोब</div>
+    <!-- ॲडव्हान्स -->
+    <a class="card card-action" href="{{ url_for('advance') }}">
+      <span class="iconify icon-emerald"
+            data-icon="material-symbols:payments-outline"></span>
+      <span>ॲडव्हान्स</span>
     </a>
 
-    <a href="{{ url_for('payment') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-money-bill-wave text-3xl mb-2"></i>
-        <div>अंतिम पैसे द्या</div>
+  </div>
+</section>
+
+<!-- REPORTS -->
+<section class="section mt-4">
+  <h4>Reports</h4>
+  <div class="grid-cards">
+    <!-- Vendor Range Summary -->
+<a class="card card-action" href="{{ url_for('vendor_range_summary') }}">
+  <span class="iconify icon-pink"
+        data-icon="material-symbols:grouped-bar-chart-outline"></span>
+  <span>Vendor Range Report</span>
+</a>
+
+    <!-- दूध सारांश -->
+    <a class="card card-action" href="{{ url_for('milk_summary') }}">
+      <span class="iconify icon-indigo"
+            data-icon="material-symbols:bar-chart-outline"></span>
+      <span>दूध सारांश</span>
     </a>
 
-    <a href="{{ url_for('milk_rate') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-tags text-3xl mb-2"></i>
-        <div>दूध दर</div>
+    <!-- दूध दर -->
+    <a class="card card-action" href="{{ url_for('milk_rate') }}">
+      <span class="iconify icon-violet"
+            data-icon="material-symbols:sell-outline"></span>
+      <span>दूध दर</span>
     </a>
 
-    <a href="{{ url_for('receipt_all_vendors') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-receipt text-3xl mb-2"></i>
-        <div>पावती घ्या</div>
+    <!-- खाद्य दर -->
+    <a class="card card-action" href="{{ url_for('food_sack_rate') }}">
+      <span class="iconify icon-green"
+            data-icon="material-symbols:eco-outline"></span>
+      <span>खाद्य दर</span>
     </a>
 
-    <a href="{{ url_for('food_sack_rate') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-sack-dollar text-3xl mb-2"></i>
-        <div>खाद्य पोत्यांचा दर</div>
-    </a>
-
-    <a href="{{ url_for('milk_summary') }}" 
-       class="bg-white shadow-md rounded-lg p-6 text-center hover:bg-indigo-50 hover:text-indigo-600 transition">
-        <i class="fa-solid fa-chart-line text-3xl mb-2"></i>
-        <div>जमा केलेलं दूध बघा</div>
-    </a>
-
-</div>
+  </div>
+</section>
 
 {% endblock %}

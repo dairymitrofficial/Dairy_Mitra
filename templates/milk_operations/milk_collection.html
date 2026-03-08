@@ -3,7 +3,10 @@
 {% block title %}दूध संकलन - Dairy Mitr{% endblock %}
 
 {% block content %}
-<h2 class="page-title">दूध संकलन</h2>
+<h2 class="page-title flex items-center gap-2">
+  <div class="icon-milk" data-lucide="milk"></div>
+  दूध संकलन 
+</h2>
 
 <!-- Set Date and Slot -->
 <form method="POST" class="mb-4 flex flex-wrap items-center gap-4">
@@ -20,7 +23,9 @@
     </div>
 
     <div class="pt-6">
-      <button type="submit" name="set_date_slot" class="btn btn-primary">दिनांक व वेळ सेट करा</button>
+      <button type="submit" name="set_date_slot" class="btn btn-primary">
+        दिनांक व वेळ सेट करा
+      </button>
     </div>
 </form>
 
@@ -29,7 +34,8 @@
 
 <!-- Search Filter -->
 <div class="mb-4">
-  <input type="text" id="vendorSearch" 
+  <input type="text"
+         id="vendorSearch"
          class="form-input w-72"
          placeholder="ग्राहक आयडी किंवा नाव शोधा"
          onkeyup="filterVendors()">
@@ -38,7 +44,9 @@
 <!-- Milk Entry Table -->
 <div class="table-wrap">
 <form method="POST">
+
     <input type="hidden" name="total_vendors" value="{{ vendors|length }}">
+
     <table class="table" id="vendorTable">
         <thead>
             <tr>
@@ -49,26 +57,64 @@
                 <th>कारवाई</th>
             </tr>
         </thead>
+
         <tbody>
         {% for v in vendors %}
             <tr id="row-{{ loop.index0 }}">
+
                 <td>
                     {{ v.vendor_id }}
-                    <input type="hidden" id="vendor_id_{{ loop.index0 }}" value="{{ v.vendor_id }}">
+                    <input type="hidden"
+                           id="vendor_id_{{ loop.index0 }}"
+                           value="{{ v.vendor_id }}">
                 </td>
+
                 <td>{{ v.name }}</td>
+
+                <!-- ✅ MILK TYPE LOGIC -->
                 <td>
-                    <select id="milk_type_{{ loop.index0 }}" class="form-select">
-                        <option value="cow">गाय</option>
-                        <option value="buffalo">म्हैस</option>
-                    </select>
+
+                    {% if v.milk_type == 'cow' %}
+
+                        <span class="milk-type-fixed">गाय</span>
+                        <input type="hidden"
+                               id="milk_type_{{ loop.index0 }}"
+                               value="cow">
+
+                    {% elif v.milk_type == 'buffalo' %}
+
+                        <span class="milk-type-fixed">म्हैस</span>
+                        <input type="hidden"
+                               id="milk_type_{{ loop.index0 }}"
+                               value="buffalo">
+
+                    {% else %}
+
+                        <select id="milk_type_{{ loop.index0 }}"
+                                class="form-select">
+                            <option value="cow">गाय</option>
+                            <option value="buffalo">म्हैस</option>
+                        </select>
+
+                    {% endif %}
+
                 </td>
+
                 <td>
-                    <input type="number" id="quantity_{{ loop.index0 }}" class="form-input w-28" step="0.1">
+                    <input type="number"
+                           id="quantity_{{ loop.index0 }}"
+                           class="form-input w-28"
+                           step="0.1">
                 </td>
+
                 <td>
-                    <button type="button" class="btn btn-secondary" onclick="submitVendorMilk({{ loop.index0 }})">सबमिट</button>
+                    <button type="button"
+                            class="btn btn-secondary"
+                            onclick="submitVendorMilk({{ loop.index0 }})">
+                        सबमिट
+                    </button>
                 </td>
+
             </tr>
         {% endfor %}
         </tbody>
@@ -77,33 +123,46 @@
 
 <!-- Final Submit -->
 <div class="mt-4">
-  <button type="button" class="btn btn-primary" onclick="finalSubmit()">
+  <button type="button"
+          class="btn btn-primary"
+          onclick="finalSubmit()">
       अंतिम सबमिट (सर्व सेव्ह करा)
   </button>
 </div>
+
 </form>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Live filter by vendor ID or name
+
+/* ================================
+   ✅ LIVE FILTER
+================================ */
 function filterVendors() {
     const input = document.getElementById("vendorSearch").value.toLowerCase();
     const rows = document.querySelectorAll("#vendorTable tbody tr");
+
     rows.forEach(row => {
         const id = row.cells[0].textContent.toLowerCase();
         const name = row.cells[1].textContent.toLowerCase();
-        row.style.display = id.includes(input) || name.includes(input) ? "" : "none";
+
+        row.style.display =
+            id.includes(input) || name.includes(input) ? "" : "none";
     });
 }
 
-// AJAX per-vendor submission
+
+/* ================================
+   ✅ SINGLE SUBMIT
+================================ */
 function submitVendorMilk(index) {
+
     const vendor_id = document.getElementById('vendor_id_' + index).value;
     const milk_type = document.getElementById('milk_type_' + index).value;
     const quantity = document.getElementById('quantity_' + index).value;
     const date = document.getElementById('selected_date').value;
-    const slot = document.querySelector('select[name="slot"]').value; // ✅ always dropdown value
+    const slot = document.querySelector('select[name="slot"]').value;
 
     if (!quantity) {
         alert("कृपया प्रमाण भरवा.");
@@ -116,23 +175,27 @@ function submitVendorMilk(index) {
         body: JSON.stringify({ vendor_id, milk_type, quantity, date, slot })
     })
     .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-    })
+    .then(data => alert(data.message))
     .catch(error => {
         console.error("Error:", error);
         alert("दूध माहिती सबमिट करण्यात अडचण आली.");
     });
 }
 
-// Bulk Submit
+
+/* ================================
+   ✅ BULK SUBMIT
+================================ */
 function finalSubmit() {
+
     const rows = document.querySelectorAll("#vendorTable tbody tr");
     const date = document.getElementById('selected_date').value;
-    const slot = document.querySelector('select[name="slot"]').value; // ✅ always dropdown value
+    const slot = document.querySelector('select[name="slot"]').value;
+
     let data = [];
 
     rows.forEach((row, index) => {
+
         const vendor_id = document.getElementById('vendor_id_' + index).value;
         const milk_type = document.getElementById('milk_type_' + index).value;
         const quantity = document.getElementById('quantity_' + index).value;
@@ -155,7 +218,7 @@ function finalSubmit() {
     .then(response => response.json())
     .then(result => {
         alert(result.message);
-        window.location.reload();  // ✅ Reset page after saving
+        window.location.reload();
     })
     .catch(error => {
         console.error("Bulk submit failed:", error);
@@ -163,16 +226,44 @@ function finalSubmit() {
     });
 }
 
+
+/* ================================
+   ✅ AUTO SLOT + RESET LOGIC
+================================ */
 window.addEventListener("DOMContentLoaded", function() {
-    const now = new Date();   // browser/mobile ची local time
-    const hour = now.getHours();
+
+    /* 🔹 AUTO SLOT */
+    const hour = new Date().getHours();
     const slotSelect = document.querySelector('select[name="slot"]');
 
-    if (hour < 15) {
-        slotSelect.value = "morning";
-    } else {
-        slotSelect.value = "evening";
+    if (slotSelect) {
+        slotSelect.value = hour < 15 ? "morning" : "evening";
     }
+
+    /* 🔹 RESET QUANTITY WHEN MILK TYPE CHANGES */
+    const total = {{ vendors|length }};
+
+    for (let i = 0; i < total; i++) {
+
+        const milkTypeEl = document.getElementById("milk_type_" + i);
+        const qtyEl = document.getElementById("quantity_" + i);
+
+        if (!milkTypeEl || !qtyEl) continue;
+
+        // Only when dropdown exists (not fixed cow/buffalo)
+        if (milkTypeEl.tagName === "SELECT") {
+
+            milkTypeEl.addEventListener("change", function() {
+
+                // Clear only that vendor's quantity
+                qtyEl.value = "";
+
+            });
+
+        }
+    }
+
 });
+
 </script>
 {% endblock %}

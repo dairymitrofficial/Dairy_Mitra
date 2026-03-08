@@ -2,18 +2,16 @@
 {% block title %}खाद्य पोती नोंदी संपादित करा{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <a href="{{ url_for('edit_entry') }}" class="btn btn-secondary me-2">
-                ← Back
-            </a>
-            <h2 class="d-inline mb-0">खाद्य पोती नोंदी संपादित करा</h2>
-        </div>
-        <a href="{{ url_for('food_sack') }}" class="btn btn-primary">
-            + नवीन पोती नोंद जोडा
-        </a>
-    </div>
+<div class="action-bar mb-4">
+  <a href="{{ url_for('edit_entry') }}" class="btn-pro btn-pro-back">
+    Back
+  </a>
+
+  <a href="{{ url_for('food_sack') }}" class="btn-pro btn-pro-add">
+    नवीन पोती नोंद जोडा
+  </a>
+</div>
+
 
     <!-- Vendor select -->
     <form method="POST" class="row g-2 align-items-end mb-4">
@@ -65,7 +63,7 @@
                     <td>
                         <button class="btn btn-danger btn-sm delete-sack" 
                                 data-url="{{ url_for('delete_food_sack', sack_id=s.id) }}">
-                            Delete
+                        <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>
                 </tr>

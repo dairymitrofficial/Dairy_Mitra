@@ -1,3 +1,10 @@
-Flask
-mysql-connector-python
-gunicorn
+Flask==3.1.2
+Flask-MySQLdb==2.0.0
+mysqlclient==2.2.7
+python-dotenv==1.1.0
+gunicorn==23.0.0
+twilio==9.5.2
+Flask-Mail==0.10.0
+Flask-Bcrypt==1.0.1
+Flask-Session==0.8.0
+Werkzeug==3.1.3

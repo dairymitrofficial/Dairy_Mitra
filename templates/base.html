@@ -1,80 +1,199 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="mr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Dairy Mitr{% endblock %}</title>
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}Dairy Mitr{% endblock %}</title>
 
-    <!-- Google Fonts -->
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-    />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/receipt.css') }}"
-    />
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        rel="stylesheet" />
 
-    <!-- Custom CSS -->
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
-    />
-  </head>
-  <body class="bg-slate-50 font-inter">
-    <!-- Fixed Header -->
-    <header class="fixed top-0 left-0 right-0 z-50">
-      {% include 'header.html' %}
-    </header>
+  <!-- CSS -->
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='css/receipt.css') }}" />
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='css/about.css') }}" />
 
-    <div class="flex pt-[64px] pb-[50px] min-h-screen">
-      <!-- Sidebar -->
-      {% include 'sidebar.html' %}
+  <!-- ===== PWA SETUP ===== -->
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#16a34a" />
+  <meta name="mobile-web-app-capable" content="yes" />
 
-      <!-- Main Content -->
-      <main class="flex-1 p-4 md:p-8 overflow-y-auto">
-        {% block content %}{% endblock %}
-      </main>
+  <!-- App Icons -->
+  <link rel="apple-touch-icon"
+        href="{{ url_for('static', filename='images/Logo2.png') }}">
+  <link rel="icon"
+        href="{{ url_for('static', filename='images/Logo2.png') }}">
+
+  {% block head %}{% endblock %}
+</head>
+
+<body>
+
+  <div id="offline-banner">You are offline</div>
+
+  <header>{% include "header.html" %}</header>
+
+  <div id="overlay"></div>
+
+  {% include "sidebar.html" %}
+
+  <main id="app-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block scripts %}{% endblock %}
+
+  <!-- Sidebar Script -->
+  <script>
+    const btn = document.getElementById("sidebar-toggle");
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("overlay");
+
+    if (btn) {
+      btn.onclick = () => {
+        sidebar.classList.add("sidebar-open");
+        overlay.classList.add("active");
+      };
+    }
+
+    if (overlay) {
+      overlay.onclick = () => {
+        sidebar.classList.remove("sidebar-open");
+        overlay.classList.remove("active");
+      };
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+
+  <!-- Iconify -->
+  <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+
+  <!-- ===== Service Worker Register ===== -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("{{ url_for('static', filename='service-worker.js') }}")
+        .then(() => console.log("Service Worker Registered"))
+        .catch(err => console.log("SW Error:", err));
+    }
+  </script>
+
+  <!-- ===== Online / Offline Banner ===== -->
+  <script>
+    function updateOnlineStatus() {
+      const banner = document.getElementById("offline-banner");
+      if (!navigator.onLine) {
+        banner.style.display = "block";
+      } else {
+        banner.style.display = "none";
+      }
+    }
+
+    window.addEventListener("load", updateOnlineStatus);
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+  </script>
+
+  <!-- ===== Install PWA Button ===== -->
+<script>
+let deferredPrompt;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+
+  if(localStorage.getItem("installDismissed") === "true"){
+      return;
+  }
+
+  e.preventDefault();
+  deferredPrompt = e;
+
+  const banner = document.createElement("div");
+
+  banner.innerHTML = `
+  <div id="installBanner" style="
+      position:fixed;
+      bottom:20px;
+      left:50%;
+      transform:translateX(-50%);
+      width:92%;
+      max-width:420px;
+      background:white;
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.2);
+      padding:16px;
+      display:flex;
+      align-items:center;
+      gap:14px;
+      z-index:9999;
+      font-family:Inter,sans-serif;
+  ">
+
+    <img src="{{ url_for('static', filename='images/Logo2.png') }}"
+         style="width:55px;height:55px;border-radius:12px">
+
+    <div style="flex:1">
+        <div style="font-weight:600;font-size:15px">DairyMitr</div>
+        <div style="font-size:12px;color:#666">
+            Fast Dairy Collection Management
+        </div>
     </div>
 
-    <!-- Fixed Footer -->
-    <footer class="fixed bottom-0 left-0 right-0 z-50">
-      {% include 'footer.html' %}
-    </footer>
+    <button id="installBtn" style="
+        background:#16a34a;
+        border:none;
+        color:white;
+        padding:8px 14px;
+        border-radius:8px;
+        font-weight:600;
+        cursor:pointer;
+    ">
+        Install
+    </button>
 
-    <!-- Sidebar Toggle Script -->
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const sidebar = document.getElementById("sidebar");
-        const overlay = document.getElementById("overlay");
-        const toggleButton = document.getElementById("sidebar-toggle");
-        const closeButton = document.getElementById("close-sidebar");
+    <button id="closeInstall" style="
+        background:none;
+        border:none;
+        font-size:18px;
+        cursor:pointer;
+        color:#888;
+    ">
+        ✕
+    </button>
 
-        function openSidebar() {
-          sidebar.classList.add("sidebar-open");
-          overlay.classList.add("active");
-        }
+  </div>
+  `;
 
-        function closeSidebar() {
-          sidebar.classList.remove("sidebar-open");
-          overlay.classList.remove("active");
-        }
+  document.body.appendChild(banner);
 
-        if (toggleButton) toggleButton.addEventListener("click", openSidebar);
-        if (closeButton) closeButton.addEventListener("click", closeSidebar);
-        if (overlay) overlay.addEventListener("click", closeSidebar);
-      });
-    </script>
+  document.getElementById("installBtn").onclick = async () => {
+      banner.remove();
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+  };
 
-    <!-- ✅ Page-specific scripts -->
-    {% block scripts %}{% endblock %}
-  </body>
+  document.getElementById("closeInstall").onclick = () => {
+      localStorage.setItem("installDismissed","true");
+      banner.remove();
+  };
+
+});
+</script>
+
+</body>
 </html>
